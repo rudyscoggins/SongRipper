@@ -1,0 +1,9 @@
+
+yt-dlp
+mutagen
+fastapi
+uvicorn[standard]
+sqlmodel
+jinja2
+python-multipart
+htmx-python   # thin wrapper just so HTMX types are available

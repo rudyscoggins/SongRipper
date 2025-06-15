@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SongRipper</title>
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body>
+<h2>Rip YouTube Playlist</h2>
+<form hx-post="/rip" hx-swap="none">
+  <input type="text" name="playlist_url" placeholder="https://www.youtube.com/playlist?list=..." size="80" required>
+  <button type="submit">Rip!</button>
+</form>
+
+<h3>Approve staged tracks</h3>
+<form hx-post="/approve" hx-swap="none">
+  <button type="submit">Approve & Move All</button>
+</form>
+<p>Staged files live in <code>./data/staging/</code> until you approve.</p>
+</body>
+</html>
