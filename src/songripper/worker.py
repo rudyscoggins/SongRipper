@@ -61,5 +61,9 @@ def rip_playlist(pl_url: str):
     return "done"
 
 def approve_all():
-    for p in (DATA_DIR / "staging").iterdir():
+    staging = DATA_DIR / "staging"
+    # Staging may be missing if no playlists were ripped yet
+    if not staging.exists() or not any(staging.iterdir()):
+        return
+    for p in staging.iterdir():
         shutil.move(str(p), NAS_PATH / p.name)
