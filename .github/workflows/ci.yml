@@ -1,6 +1,12 @@
 name: Build & Push
+
 on:
-  push: { branches: [ main ] }
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read      # allow checkout
+  packages: write     # allow pushing to GHCR 
 jobs:
   docker:
     runs-on: ubuntu-latest
