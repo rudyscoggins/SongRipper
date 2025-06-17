@@ -24,6 +24,21 @@ The web UI allows you to submit a YouTube playlist URL and to approve all staged
 
 These can be customised in `docker-compose.yml` or when running the container manually.
 
+## Automatic Updates
+
+The provided Compose file also includes a `watchtower` service.  It regularly
+checks for new images and can send Telegram notifications when updates are
+applied.  Create a `.env` file alongside `docker-compose.yml` with your
+Telegram bot credentials:
+
+```bash
+WATCHTOWER_TELEGRAM_TOKEN=<bot token>
+WATCHTOWER_TELEGRAM_CHAT_ID=<chat id>
+```
+
+Remove or comment out the `watchtower` block if you don't wish to use automatic
+updates.
+
 ## Development
 
 Install the requirements and start the API with Uvicorn:
