@@ -18,7 +18,13 @@ services:
   watchtower:
     image: containrrr/watchtower
     restart: unless-stopped
+    environment:
+      WATCHTOWER_TELEGRAM_TOKEN: "1619197004:AAGH6-9_U43mREoHivbyfFW8Jd6ipV82MZk"
+      WATCHTOWER_TELEGRAM_CHAT_ID: "1602421220"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: songripper --interval 300
+    command: >
+      songripper --interval 300 --notification-telegram \
+      --notification-telegram-token=${WATCHTOWER_TELEGRAM_TOKEN} \
+      --notification-telegram-chat-id=${WATCHTOWER_TELEGRAM_CHAT_ID}
 
