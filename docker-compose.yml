@@ -16,12 +16,12 @@ services:
       - "5423:8000"
 
   watchtower:
-    image: containrrr/watchtower
+    image: containrrr/watchtower:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     env_file:
-      - .env               # <-- lives only on the Pi
+      - .env                         # keeps secrets off-repo
     command: >
-      songripper --interval 300 --notification-telegram
-      --notification-telegram-token=${WATCHTOWER_TELEGRAM_TOKEN}
-      --notification-telegram-chat-id=${WATCHTOWER_TELEGRAM_CHAT_ID}
+      songripper --interval 300
+      -n shoutrrr
+      --notification-url=telegram://${WATCHTOWER_TELEGRAM_TOKEN}@telegram?channels=${WATCHTOWER_TELEGRAM_CHAT_ID}&parseMode=Markdown
