@@ -4,7 +4,6 @@ services:
   songripper:
     build: .
     image: ghcr.io/rudyscoggins/songripper:latest
-    container_name: songripper
     restart: unless-stopped
     environment:
       DATA_DIR: /data
