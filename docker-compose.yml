@@ -17,8 +17,11 @@ services:
 
   watchtower:
     image: containrrr/watchtower
-    restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: songripper --interval 300
-
+    env_file:
+      - .env               # <-- lives only on the Pi
+    command: >
+      songripper --interval 300 --notification-telegram
+      --notification-telegram-token=${WATCHTOWER_TELEGRAM_TOKEN}
+      --notification-telegram-chat-id=${WATCHTOWER_TELEGRAM_CHAT_ID}
