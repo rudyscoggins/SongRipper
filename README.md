@@ -36,6 +36,9 @@ WATCHTOWER_TELEGRAM_TOKEN=<bot token>
 WATCHTOWER_TELEGRAM_CHAT_ID=<chat id>
 ```
 
+Watchtower is scoped to containers labelled `com.centurylinklabs.watchtower.scope=songripper`.
+This label is added to the `songripper` service so only it is updated.
+
 Remove or comment out the `watchtower` block if you don't wish to use automatic
 updates.
 
