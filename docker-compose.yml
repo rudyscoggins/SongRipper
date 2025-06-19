@@ -14,14 +14,15 @@ services:
     ports:
       - "5423:8000"
 
+
   watchtower:
     image: containrrr/watchtower:latest
-    restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     env_file:
-      - .env                         # keeps secrets off-repo
+      - .env
     command: >
-      songripper --interval 300
+      --interval 300
+      --scope songripper          # optional but keeps it from updating itself
       -n shoutrrr
-      --notification-url=telegram://${WATCHTOWER_TELEGRAM_TOKEN}@telegram?channels=${WATCHTOWER_TELEGRAM_CHAT_ID}&parseMode=Markdown
+      --notification-url=telegram://${WATCHTOWER_TELEGRAM_TOKEN}@telegram?channels=${WATCHTOWER_TELEGRAM_CHAT_ID}
