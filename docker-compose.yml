@@ -2,8 +2,9 @@ version: "3.9"
 
 services:
   songripper:
-    build: .
     image: ghcr.io/rudyscoggins/songripper:latest
+    labels:
+      - com.centurylinklabs.watchtower.scope=songripper
     restart: unless-stopped
     environment:
       DATA_DIR: /data
