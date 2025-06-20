@@ -2,7 +2,8 @@ import types
 import os
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-from songripper.worker import clean, fetch_cover
+from songripper import worker
+from songripper.worker import clean, fetch_cover, delete_staging
 
 
 def test_clean_removes_forbidden_chars():
@@ -27,3 +28,17 @@ def test_fetch_cover_uses_requests_module():
     assert result == b"img"
     assert calls[0][0] == "https://itunes.apple.com/search"
     assert calls[1][0] == "http://x/600x600bb"
+
+
+def test_delete_staging_returns_false_when_no_files(tmp_path):
+    worker.DATA_DIR = tmp_path
+    assert delete_staging() is False
+
+
+def test_delete_staging_removes_dir_and_returns_true(tmp_path):
+    worker.DATA_DIR = tmp_path
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    (staging / "a").write_text("x")
+    assert delete_staging() is True
+    assert not staging.exists()
