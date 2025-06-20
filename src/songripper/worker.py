@@ -1,8 +1,6 @@
 # src/songripper/worker.py
-import subprocess, json, shutil, re, requests
+import subprocess, json, shutil, re
 from pathlib import Path
-from mutagen.easyid3 import EasyID3
-from mutagen.id3 import ID3, APIC
 from .settings import DATA_DIR, NAS_PATH
 
 YT_BASE = ["yt-dlp", "--quiet", "--no-warnings"]
@@ -10,14 +8,22 @@ YT_BASE = ["yt-dlp", "--quiet", "--no-warnings"]
 def clean(text: str) -> str:
     return re.sub(r'[\\/*?:"<>|]', "_", text).strip()
 
-def fetch_cover(artist: str, title: str) -> bytes | None:
+def fetch_cover(artist: str, title: str, requests_mod=None) -> bytes | None:
     """Return album art from iTunes if available.
 
     Any network or parsing error should simply result in ``None`` rather
     than raising an exception during ripping.
+
+    The ``requests_mod`` parameter allows dependency injection for unit
+    testing.  If omitted, the real ``requests`` library is imported.
     """
     try:
-        res = requests.get(
+        if requests_mod is None:
+            try:
+                import requests as requests_mod  # type: ignore
+            except Exception:
+                return None
+        res = requests_mod.get(
             "https://itunes.apple.com/search",
             params={"term": f"{artist} {title}", "entity": "song", "limit": 1},
             timeout=10,
@@ -25,7 +31,7 @@ def fetch_cover(artist: str, title: str) -> bytes | None:
         res.raise_for_status()
         q = res.json()
         url = q["results"][0]["artworkUrl100"].replace("100x100bb", "600x600bb")
-        cover = requests.get(url, timeout=10)
+        cover = requests_mod.get(url, timeout=10)
         cover.raise_for_status()
         return cover.content
     except Exception:
@@ -45,16 +51,24 @@ def mp3_from_url(url: str, staging_dir: Path):
                               "-o", outtmpl, url], check=True)
 
     mp3_path = staging_dir / f"{artist} - {title}.mp3"
-    # 3. tag file
-    audio = EasyID3(mp3_path)
-    audio["artist"], audio["title"], audio["album"] = [artist], [title], [album]
-    audio.save()
-    cover = fetch_cover(artist, title)
-    if cover:
-        tags = ID3(mp3_path)
-        tags["APIC"] = APIC(encoding=3, mime="image/jpeg",
-                            type=3, desc=u"Cover", data=cover)
-        tags.save()
+    # 3. tag file.  Import mutagen lazily so the module can be imported
+    # even when the dependency is missing (e.g. in unit tests).
+    try:
+        from mutagen.easyid3 import EasyID3
+        from mutagen.id3 import ID3, APIC
+    except Exception:
+        EasyID3 = ID3 = APIC = None  # type: ignore
+
+    if EasyID3 is not None:
+        audio = EasyID3(mp3_path)
+        audio["artist"], audio["title"], audio["album"] = [artist], [title], [album]
+        audio.save()
+        cover = fetch_cover(artist, title)
+        if cover:
+            tags = ID3(mp3_path)
+            tags["APIC"] = APIC(encoding=3, mime="image/jpeg",
+                                type=3, desc=u"Cover", data=cover)
+            tags.save()
     return artist, album, mp3_path
 
 def rip_playlist(pl_url: str):
