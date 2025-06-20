@@ -15,7 +15,8 @@ music collection.
 docker compose up --build
 ```
 
-The web UI allows you to submit a YouTube playlist URL and to approve all staged tracks.
+The web UI allows you to submit a YouTube playlist URL, approve all staged tracks
+or delete the staging area.
 
 ## Environment Variables
 

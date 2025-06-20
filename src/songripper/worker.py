@@ -78,3 +78,8 @@ def approve_all():
         return
     for p in staging.iterdir():
         shutil.move(str(p), NAS_PATH / p.name)
+
+def delete_staging():
+    staging = DATA_DIR / "staging"
+    if staging.exists():
+        shutil.rmtree(staging)
