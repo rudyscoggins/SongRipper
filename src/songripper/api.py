@@ -7,8 +7,9 @@ app = FastAPI()
 templates = Jinja2Templates(directory="src/songripper/templates")
 
 @app.get("/", response_class=HTMLResponse)
-def home(req: Request):
-    return templates.TemplateResponse("index.html", {"request": req})
+def home(req: Request, msg: str | None = None):
+    context = {"request": req, "message": msg}
+    return templates.TemplateResponse("index.html", context)
 
 @app.post("/rip")
 def rip(playlist_url: str = Form(...), bg: BackgroundTasks = None):
@@ -23,4 +24,4 @@ def approve():
 @app.post("/delete")
 def delete():
     delete_staging()
-    return RedirectResponse("/", status_code=303)
+    return RedirectResponse("/?msg=Files+successfully+deleted", status_code=303)
