@@ -4,6 +4,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from songripper import worker
 from songripper.worker import clean, fetch_cover, delete_staging
+import pytest
 
 
 def test_clean_removes_forbidden_chars():
@@ -28,6 +29,25 @@ def test_fetch_cover_uses_requests_module():
     assert result == b"img"
     assert calls[0][0] == "https://itunes.apple.com/search"
     assert calls[1][0] == "http://x/600x600bb"
+
+
+@pytest.mark.parametrize("fail", ["get", "raise"])
+def test_fetch_cover_returns_none_on_error(fail):
+    def fake_get(url, params=None, timeout=None):
+        if fail == "get":
+            raise RuntimeError("boom")
+        class Resp:
+            def __init__(self):
+                self.content = b"img"
+            def json(self):
+                return {"results": [{"artworkUrl100": "http://x/100x100bb"}]}
+            def raise_for_status(self):
+                if fail == "raise":
+                    raise RuntimeError("boom")
+        return Resp()
+
+    fake_requests = types.SimpleNamespace(get=fake_get)
+    assert fetch_cover("a", "b", fake_requests) is None
 
 
 def test_delete_staging_returns_false_when_no_files(tmp_path):
