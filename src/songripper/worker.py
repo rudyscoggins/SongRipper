@@ -83,6 +83,7 @@ def rip_playlist(pl_url: str):
         dest = staging / artist / album
         dest.mkdir(parents=True, exist_ok=True)
         shutil.move(str(path), dest / path.name)
+    print("Songs successfully transferred to staging directory")
     return "done"
 
 def approve_all():
