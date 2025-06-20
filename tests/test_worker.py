@@ -1,6 +1,7 @@
 import types
 import os
 import sys
+import shutil
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from songripper import worker
 from songripper.worker import clean, fetch_cover, delete_staging
@@ -42,3 +43,43 @@ def test_delete_staging_removes_dir_and_returns_true(tmp_path):
     (staging / "a").write_text("x")
     assert delete_staging() is True
     assert not staging.exists()
+
+
+def test_approve_all_when_no_staging_or_empty(monkeypatch, tmp_path):
+    worker.DATA_DIR = tmp_path
+    worker.NAS_PATH = tmp_path / "nas"
+    moves = []
+    monkeypatch.setattr(shutil, "move", lambda s, d: moves.append((s, d)))
+
+    # staging directory does not exist
+    worker.approve_all()
+    assert moves == []
+
+    # staging directory exists but is empty
+    (tmp_path / "staging").mkdir()
+    worker.approve_all()
+    assert moves == []
+
+
+def test_approve_all_moves_subdirs(monkeypatch, tmp_path):
+    worker.DATA_DIR = tmp_path
+    nas = tmp_path / "nas"
+    worker.NAS_PATH = nas
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    (staging / "a").mkdir()
+    (staging / "b").mkdir()
+
+    calls = []
+
+    def fake_move(src, dst):
+        calls.append((src, dst))
+
+    monkeypatch.setattr(shutil, "move", fake_move)
+    worker.approve_all()
+
+    expected = {
+        (str(staging / "a"), nas / "a"),
+        (str(staging / "b"), nas / "b"),
+    }
+    assert set(calls) == expected
