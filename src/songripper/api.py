@@ -2,13 +2,20 @@
 from fastapi import FastAPI, Request, Form, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from .worker import rip_playlist, approve_all, delete_staging
+from .settings import CACHE_BUSTER
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="src/songripper/static"), name="static")
 templates = Jinja2Templates(directory="src/songripper/templates")
 
 @app.get("/", response_class=HTMLResponse)
 def home(req: Request, msg: str | None = None):
-    context = {"request": req, "message": msg}
+    context = {
+        "request": req,
+        "message": msg,
+        "v": CACHE_BUSTER,
+    }
     return templates.TemplateResponse("index.html", context)
 
 @app.post("/rip")
