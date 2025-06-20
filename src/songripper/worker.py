@@ -11,12 +11,23 @@ def clean(text: str) -> str:
     return re.sub(r'[\\/*?:"<>|]', "_", text).strip()
 
 def fetch_cover(artist: str, title: str) -> bytes | None:
-    q = requests.get("https://itunes.apple.com/search",
-                     params={"term": f"{artist} {title}", "entity": "song", "limit": 1},
-                     timeout=10).json()
+    """Return album art from iTunes if available.
+
+    Any network or parsing error should simply result in ``None`` rather
+    than raising an exception during ripping.
+    """
     try:
+        res = requests.get(
+            "https://itunes.apple.com/search",
+            params={"term": f"{artist} {title}", "entity": "song", "limit": 1},
+            timeout=10,
+        )
+        res.raise_for_status()
+        q = res.json()
         url = q["results"][0]["artworkUrl100"].replace("100x100bb", "600x600bb")
-        return requests.get(url, timeout=10).content
+        cover = requests.get(url, timeout=10)
+        cover.raise_for_status()
+        return cover.content
     except Exception:
         return None
 
