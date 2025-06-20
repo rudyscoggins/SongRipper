@@ -31,4 +31,4 @@ def approve():
 @app.post("/delete")
 def delete():
     delete_staging()
-    return RedirectResponse("/?msg=Files+successfully+deleted", status_code=303)
+    return RedirectResponse("/?msg=Files+deleted", status_code=303)
