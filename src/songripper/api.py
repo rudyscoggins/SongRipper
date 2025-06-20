@@ -2,7 +2,7 @@
 from fastapi import FastAPI, Request, Form, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from .worker import rip_playlist, approve_all
+from .worker import rip_playlist, approve_all, delete_staging
 app = FastAPI()
 templates = Jinja2Templates(directory="src/songripper/templates")
 
@@ -18,4 +18,9 @@ def rip(playlist_url: str = Form(...), bg: BackgroundTasks = None):
 @app.post("/approve")
 def approve():
     approve_all()
+    return RedirectResponse("/", status_code=303)
+
+@app.post("/delete")
+def delete():
+    delete_staging()
     return RedirectResponse("/", status_code=303)
