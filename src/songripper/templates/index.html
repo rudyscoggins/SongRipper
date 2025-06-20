@@ -18,12 +18,14 @@
 </form>
 
 <h3>Approve staged tracks</h3>
-<form hx-post="/approve" hx-swap="none">
-  <button type="submit">Approve & Move All</button>
-</form>
-<form action="/delete" method="post">
-  <button type="submit">Unapprove and Delete Staging</button>
-</form>
+<div class="approval-actions">
+  <form hx-post="/approve" hx-swap="none">
+    <button type="submit">Approve & Move All</button>
+  </form>
+  <form action="/delete" method="post">
+    <button type="submit">Unapprove and Delete Staging</button>
+  </form>
+</div>
 <p>Staged files live in <code>./data/staging/</code> until you approve.</p>
 <footer>Last package update: {{ updated }}</footer>
 </body>
