@@ -1,6 +1,7 @@
 import types
 import os
 import sys
+import json
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from songripper import worker
 from songripper.worker import clean, fetch_cover, delete_staging
@@ -62,3 +63,42 @@ def test_delete_staging_removes_dir_and_returns_true(tmp_path):
     (staging / "a").write_text("x")
     assert delete_staging() is True
     assert not staging.exists()
+
+
+def test_rip_playlist_moves_files(monkeypatch, tmp_path):
+    worker.DATA_DIR = tmp_path
+
+    playlist_json = json.dumps({"entries": [{"id": "1"}, {"id": "2"}]})
+
+    def fake_check_output(args, text=None):
+        return playlist_json
+
+    monkeypatch.setattr(worker.subprocess, "check_output", fake_check_output)
+
+    songs = iter([
+        ("artist1", "album1", tmp_path / "song1.mp3"),
+        ("artist2", "album2", tmp_path / "song2.mp3"),
+    ])
+
+    def fake_mp3_from_url(url, staging):
+        return next(songs)
+
+    monkeypatch.setattr(worker, "mp3_from_url", fake_mp3_from_url)
+
+    moves = []
+
+    def fake_move(src, dst):
+        moves.append((src, dst))
+
+    monkeypatch.setattr(worker.shutil, "move", fake_move)
+
+    result = worker.rip_playlist("http://pl")
+
+    dest1 = tmp_path / "staging" / "artist1" / "album1" / "song1.mp3"
+    dest2 = tmp_path / "staging" / "artist2" / "album2" / "song2.mp3"
+
+    assert moves == [
+        (str(tmp_path / "song1.mp3"), dest1),
+        (str(tmp_path / "song2.mp3"), dest2),
+    ]
+    assert result == "done"
