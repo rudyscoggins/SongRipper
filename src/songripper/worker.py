@@ -94,7 +94,14 @@ def approve_all():
     for p in staging.iterdir():
         shutil.move(str(p), NAS_PATH / p.name)
 
-def delete_staging():
+def delete_staging() -> bool:
+    """Delete the staging directory if it contains files.
+
+    Returns ``True`` if any files were removed, otherwise ``False``.
+    ``False`` is returned when the directory does not exist or is empty.
+    """
     staging = DATA_DIR / "staging"
-    if staging.exists():
-        shutil.rmtree(staging)
+    if not staging.exists() or not any(staging.iterdir()):
+        return False
+    shutil.rmtree(staging)
+    return True
