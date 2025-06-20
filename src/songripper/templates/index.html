@@ -9,7 +9,7 @@
 </head>
 <body>
 {% if message %}
-<p style="color: green;">{{ message }}</p>
+<p id="message" style="color: green;">{{ message }}</p>
 {% endif %}
 <h2>Rip YouTube Playlist</h2>
 <form hx-post="/rip" hx-swap="none">
