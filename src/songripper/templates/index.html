@@ -21,7 +21,7 @@
 <form hx-post="/approve" hx-swap="none">
   <button type="submit">Approve & Move All</button>
 </form>
-<form hx-post="/delete" hx-swap="none">
+<form action="/delete" method="post">
   <button type="submit">Unapprove and Delete Staging</button>
 </form>
 <p>Staged files live in <code>./data/staging/</code> until you approve.</p>
