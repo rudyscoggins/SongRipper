@@ -31,19 +31,34 @@ def test_fetch_cover_uses_requests_module():
     assert calls[1][0] == "http://x/600x600bb"
 
 
-@pytest.mark.parametrize("fail", ["get", "raise"])
-def test_fetch_cover_returns_none_on_error(fail):
+@pytest.mark.parametrize(
+    "fail_point",
+    ["search_get", "search_raise", "cover_get", "cover_raise"],
+)
+def test_fetch_cover_returns_none_on_error(fail_point):
+    calls = []
+
     def fake_get(url, params=None, timeout=None):
-        if fail == "get":
+        idx = len(calls)
+        calls.append(url)
+        if fail_point == "search_get" and idx == 0:
             raise RuntimeError("boom")
+        if fail_point == "cover_get" and idx == 1:
+            raise RuntimeError("boom")
+
         class Resp:
             def __init__(self):
                 self.content = b"img"
+
             def json(self):
                 return {"results": [{"artworkUrl100": "http://x/100x100bb"}]}
+
             def raise_for_status(self):
-                if fail == "raise":
+                if fail_point == "search_raise" and idx == 0:
                     raise RuntimeError("boom")
+                if fail_point == "cover_raise" and idx == 1:
+                    raise RuntimeError("boom")
+
         return Resp()
 
     fake_requests = types.SimpleNamespace(get=fake_get)
