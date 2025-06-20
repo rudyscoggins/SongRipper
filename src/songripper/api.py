@@ -5,6 +5,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from .worker import rip_playlist, approve_all, delete_staging
 from .settings import CACHE_BUSTER
+from . import PACKAGE_TIME
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="src/songripper/static"), name="static")
 templates = Jinja2Templates(directory="src/songripper/templates")
@@ -15,6 +16,7 @@ def home(req: Request, msg: str | None = None):
         "request": req,
         "message": msg,
         "v": CACHE_BUSTER,
+        "updated": PACKAGE_TIME,
     }
     return templates.TemplateResponse("index.html", context)
 
