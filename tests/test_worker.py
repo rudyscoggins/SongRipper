@@ -102,3 +102,15 @@ def test_rip_playlist_moves_files(monkeypatch, tmp_path):
         (str(tmp_path / "song2.mp3"), dest2),
     ]
     assert result == "done"
+
+
+def test_staging_has_files(tmp_path):
+    worker.DATA_DIR = tmp_path
+    # No staging dir -> False
+    assert worker.staging_has_files() is False
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    # Empty dir -> False
+    assert worker.staging_has_files() is False
+    (staging / "song.mp3").write_text("x")
+    assert worker.staging_has_files() is True
