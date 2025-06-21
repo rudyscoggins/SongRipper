@@ -86,10 +86,15 @@ def rip_playlist(pl_url: str):
     print("Songs successfully transferred to staging directory")
     return "done"
 
+def staging_has_files() -> bool:
+    """Return True if staging directory exists and is non-empty."""
+    staging = DATA_DIR / "staging"
+    return staging.exists() and any(staging.iterdir())
+
 def approve_all():
     staging = DATA_DIR / "staging"
     # Staging may be missing if no playlists were ripped yet
-    if not staging.exists() or not any(staging.iterdir()):
+    if not staging_has_files():
         return
     for p in staging.iterdir():
         shutil.move(str(p), NAS_PATH / p.name)
@@ -101,7 +106,7 @@ def delete_staging() -> bool:
     ``False`` is returned when the directory does not exist or is empty.
     """
     staging = DATA_DIR / "staging"
-    if not staging.exists() or not any(staging.iterdir()):
+    if not staging_has_files():
         return False
     shutil.rmtree(staging)
     return True

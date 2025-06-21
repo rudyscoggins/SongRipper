@@ -3,7 +3,7 @@ from fastapi import FastAPI, Request, Form, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from .worker import rip_playlist, approve_all, delete_staging
+from .worker import rip_playlist, approve_all, delete_staging, staging_has_files
 from .settings import CACHE_BUSTER
 from . import PACKAGE_TIME
 app = FastAPI()
@@ -26,6 +26,7 @@ def home(req: Request, msg: str | None = None):
         "message": msg,
         "v": CACHE_BUSTER,
         "updated": PACKAGE_TIME,
+        "has_staged_files": staging_has_files(),
     }
     return templates.TemplateResponse("index.html", context)
 
