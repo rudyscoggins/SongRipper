@@ -1,5 +1,5 @@
 # src/songripper/api.py
-from fastapi import FastAPI, Request, Form, BackgroundTasks
+from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -37,8 +37,10 @@ def home(req: Request, msg: str | None = None):
     return templates.TemplateResponse("index.html", context)
 
 @app.post("/rip")
-def rip(playlist_url: str = Form(...), bg: BackgroundTasks = None):
-    bg.add_task(rip_playlist, playlist_url)
+def rip(request: Request, playlist_url: str = Form(...)):
+    rip_playlist(playlist_url)
+    if request.headers.get("Hx-Request"):
+        return HTMLResponse("", status_code=204, headers={"HX-Trigger": "refreshStaging"})
     return RedirectResponse("/", status_code=303)
 
 @app.post("/approve")
