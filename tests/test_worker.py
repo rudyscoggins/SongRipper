@@ -114,3 +114,21 @@ def test_staging_has_files(tmp_path):
     assert worker.staging_has_files() is False
     (staging / "song.mp3").write_text("x")
     assert worker.staging_has_files() is True
+
+
+def test_list_staged_tracks(tmp_path):
+    worker.DATA_DIR = tmp_path
+    staging = tmp_path / "staging"
+    (staging / "Artist1" / "Album1").mkdir(parents=True)
+    f1 = staging / "Artist1" / "Album1" / "Artist1 - Song1.mp3"
+    f1.write_text("x")
+    (staging / "Artist2" / "Album2").mkdir(parents=True)
+    f2 = staging / "Artist2" / "Album2" / "Artist2 - Song2.mp3"
+    f2.write_text("y")
+
+    tracks = sorted(worker.list_staged_tracks(), key=lambda t: t.title)
+
+    assert [(t.artist, t.album, t.title, t.filepath) for t in tracks] == [
+        ("Artist1", "Album1", "Song1", str(f1)),
+        ("Artist2", "Album2", "Song2", str(f2)),
+    ]

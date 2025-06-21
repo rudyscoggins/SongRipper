@@ -1,0 +1,20 @@
+<table>
+  <thead>
+    <tr>
+      <th>Artist</th>
+      <th>Album</th>
+      <th>Title</th>
+      <th>Filepath</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for track in tracks %}
+    <tr>
+      <td>{{ track.artist }}</td>
+      <td>{{ track.album }}</td>
+      <td>{{ track.title }}</td>
+      <td>{{ track.filepath }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
