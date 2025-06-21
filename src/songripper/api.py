@@ -40,9 +40,12 @@ def approve():
     return RedirectResponse("/", status_code=303)
 
 @app.post("/delete")
-def delete():
+def delete(request: Request):
     if delete_staging():
-        msg = "Files+deleted"
+        msg = "Files deleted"
     else:
-        msg = "No+files+in+staging"
-    return RedirectResponse(f"/?msg={msg}", status_code=303)
+        msg = "No files in staging"
+    if request.headers.get("Hx-Request"):
+        context = {"request": request, "message": msg}
+        return templates.TemplateResponse("message.html", context)
+    return RedirectResponse(f"/?msg={msg.replace(' ', '+')}", status_code=303)
