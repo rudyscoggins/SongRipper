@@ -3,7 +3,13 @@ from fastapi import FastAPI, Request, Form, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from .worker import rip_playlist, approve_all, delete_staging, staging_has_files
+from .worker import (
+    rip_playlist,
+    approve_all,
+    delete_staging,
+    staging_has_files,
+    list_staged_tracks,
+)
 from .settings import CACHE_BUSTER
 from . import PACKAGE_TIME
 app = FastAPI()
@@ -50,3 +56,10 @@ def delete(request: Request):
         context = {"request": request, "message": msg}
         return templates.TemplateResponse("message.html", context)
     return RedirectResponse(f"/?msg={msg.replace(' ', '+')}", status_code=303)
+
+
+@app.get("/staging", response_class=HTMLResponse)
+def staging(req: Request):
+    tracks = list_staged_tracks()
+    context = {"request": req, "tracks": tracks}
+    return templates.TemplateResponse("staging.html", context)

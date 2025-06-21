@@ -2,6 +2,7 @@
 import subprocess, json, shutil, re
 from pathlib import Path
 from .settings import DATA_DIR, NAS_PATH
+from .models import Track
 
 YT_BASE = ["yt-dlp", "--quiet", "--no-warnings"]
 
@@ -110,3 +111,35 @@ def delete_staging() -> bool:
         return False
     shutil.rmtree(staging)
     return True
+
+
+def list_staged_tracks() -> list[Track]:
+    """Return a list of ``Track`` objects for files in the staging directory."""
+    staging = DATA_DIR / "staging"
+    if not staging.exists():
+        return []
+
+    tracks: list[Track] = []
+    for artist_dir in staging.iterdir():
+        if not artist_dir.is_dir():
+            continue
+        for album_dir in artist_dir.iterdir():
+            if not album_dir.is_dir():
+                continue
+            for mp3 in album_dir.glob("*.mp3"):
+                name = mp3.stem
+                if " - " in name:
+                    _, title = name.split(" - ", 1)
+                else:
+                    title = name
+                tracks.append(
+                    Track(
+                        job_id=0,
+                        artist=artist_dir.name,
+                        album=album_dir.name,
+                        title=title,
+                        filepath=str(mp3),
+                    )
+                )
+
+    return tracks

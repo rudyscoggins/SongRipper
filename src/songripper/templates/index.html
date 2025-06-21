@@ -29,6 +29,7 @@
   </form>
 </div>
 <p>Staged files live in <code>./data/staging/</code> until you approve.</p>
+<div id="staging-list" hx-get="/staging" hx-trigger="load"></div>
 <footer>Last package update: {{ updated }}</footer>
 </body>
 </html>
