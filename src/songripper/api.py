@@ -48,13 +48,17 @@ def approve():
 
 @app.post("/delete")
 def delete(request: Request):
-    if delete_staging():
+    deleted = delete_staging()
+    if deleted:
         msg = "Files deleted"
     else:
         msg = "No files in staging"
     if request.headers.get("Hx-Request"):
         context = {"request": request, "message": msg}
-        return templates.TemplateResponse("message.html", context)
+        response = templates.TemplateResponse("message.html", context)
+        if deleted:
+            response.headers["HX-Trigger-After-Swap"] = "refreshStaging"
+        return response
     return RedirectResponse(f"/?msg={msg.replace(' ', '+')}", status_code=303)
 
 
