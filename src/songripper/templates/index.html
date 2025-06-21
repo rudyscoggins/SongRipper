@@ -8,9 +8,11 @@
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
 <body>
+<div id="alerts">
 {% if message %}
-<p id="message" style="color: green;">{{ message }}</p>
+  <p id="message" style="color: green;">{{ message }}</p>
 {% endif %}
+</div>
 <h2>Rip YouTube Playlist</h2>
 <form hx-post="/rip" hx-swap="none">
   <input type="text" name="playlist_url" placeholder="https://www.youtube.com/playlist?list=..." size="80" required>
@@ -22,7 +24,7 @@
   <form hx-post="/approve" hx-swap="none">
     <button type="submit">Approve & Move All</button>
   </form>
-  <form action="/delete" method="post">
+  <form hx-post="/delete" hx-target="#alerts" hx-swap="innerHTML">
     <button type="submit">Unapprove and Delete Staging</button>
   </form>
 </div>
