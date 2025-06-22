@@ -3,6 +3,8 @@ body {
   margin: 1em auto;
   padding: 0 1em;
   max-width: 800px;
+  background-color: #000;
+  color: lime;
 }
 
 form {
@@ -49,7 +51,7 @@ th, td {
 footer {
   margin-top: 2em;
   font-size: 0.9em;
-  color: #666;
+  color: #9f9;
 }
 
 #spinner {
