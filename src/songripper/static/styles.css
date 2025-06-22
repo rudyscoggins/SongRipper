@@ -1,4 +1,39 @@
-body {}
+body {
+  font-family: sans-serif;
+  margin: 1em auto;
+  padding: 0 1em;
+  max-width: 800px;
+}
+
+form {
+  margin-bottom: 1em;
+}
+
+input[type="text"] {
+  width: 100%;
+  max-width: 600px;
+  box-sizing: border-box;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.25em 0.5em;
+}
+
+@media (max-width: 600px) {
+  body {
+    margin: 0.5em;
+  }
+
+  .approval-actions form {
+    display: block;
+  }
+}
 
 #alerts {
   position: fixed;

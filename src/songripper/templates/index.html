@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Song Ripper</title>
   <link rel="stylesheet" href="/static/styles.css?v={{ v }}">
   <script src="/static/main.js?v={{ v }}"></script>
@@ -16,7 +17,7 @@
 <h2>Rip YouTube Playlist</h2>
 <div id="spinner" aria-hidden="true"></div>
 <form hx-post="/rip" hx-swap="none" hx-indicator="#spinner">
-  <input type="text" name="playlist_url" placeholder="https://www.youtube.com/playlist?list=..." size="80" required>
+  <input type="text" name="playlist_url" placeholder="https://www.youtube.com/playlist?list=..." required>
   <button type="submit">Rip!</button>
 </form>
 
