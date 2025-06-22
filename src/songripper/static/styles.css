@@ -44,6 +44,15 @@ th, td {
   z-index: 1000;
 }
 
+#alerts p {
+  color: lime;
+  border: 1px solid lime;
+  padding: 0.5em;
+  margin: 0;
+  background-color: #111;
+  border-radius: 4px;
+}
+
 .approval-actions form {
   margin-bottom: 1em;
 }
