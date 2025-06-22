@@ -159,3 +159,70 @@ def list_staged_tracks() -> list[Track]:
                 )
 
     return tracks
+
+def read_tags(filepath: str) -> dict[str, str]:
+    """Return artist, album and title tags from ``filepath``.
+
+    Falls back to directory and filename heuristics when tag parsing
+    dependencies are missing.
+    """
+    path = Path(filepath)
+    try:
+        from mutagen.easyid3 import EasyID3
+    except Exception:  # pragma: no cover - optional dependency
+        EasyID3 = None
+    if EasyID3 is not None:
+        try:
+            audio = EasyID3(path)
+            return {
+                "artist": audio.get("artist", [path.parents[1].name])[0],
+                "album": audio.get("album", [path.parent.name])[0],
+                "title": audio.get("title", [path.stem])[0],
+            }
+        except Exception:
+            pass
+    name = path.stem
+    title = name.split(" - ", 1)[1] if " - " in name else name
+    return {
+        "artist": path.parents[1].name,
+        "album": path.parent.name,
+        "title": title,
+    }
+
+def update_track(filepath: str, field: str, value: str) -> Path:
+    """Update ``field`` tag of the MP3 at ``filepath``.
+
+    The file is renamed and moved inside the staging directory to match
+    the updated artist/album/title structure.  Returns the new path.
+    """
+    tags = read_tags(filepath)
+    tags[field] = value
+    try:
+        from mutagen.easyid3 import EasyID3
+    except Exception:  # pragma: no cover - optional dependency
+        EasyID3 = None
+    if EasyID3 is not None:
+        try:
+            audio = EasyID3(filepath)
+            audio["artist"] = [tags["artist"]]
+            audio["album"] = [tags["album"]]
+            audio["title"] = [tags["title"]]
+            audio.save()
+        except Exception:
+            pass
+    path = Path(filepath)
+    staging_root = DATA_DIR / "staging"
+    dest_dir = staging_root / tags["artist"] / tags["album"]
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    new_path = dest_dir / f"{tags['artist']} - {tags['title']}.mp3"
+    if path.resolve() != new_path.resolve():
+        path.rename(new_path)
+        # remove empty directories
+        parent = path.parent
+        while parent != staging_root:
+            try:
+                parent.rmdir()
+            except OSError:
+                break
+            parent = parent.parent
+    return new_path
