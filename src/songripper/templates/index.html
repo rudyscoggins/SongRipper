@@ -32,6 +32,16 @@
 </div>
 <p>Staged files live in <code>./data/staging/</code> until you approve.</p>
   <div id="staging-list" hx-get="/staging" hx-trigger="load, refreshStaging from:body"></div>
-<footer>Last package update: {{ updated }}</footer>
+  <h3>How to Use</h3>
+  <ol>
+    <li>Paste a YouTube playlist URL in the field above and click <strong>Rip!</strong>.</li>
+    <li>After ripping, review the staged tracks listed above.</li>
+    <li>Press <strong>Approve &amp; Move All</strong> to move the tracks into your library or
+        choose <strong>Unapprove and Delete Staging</strong> to discard them.</li>
+  </ol>
+  <h3>Updates</h3>
+  <p>Codex automatically updates this code. Once the changes merge into <code>main</code> on GitHub,
+     Watchtower pulls the new image and redeploys it automatically.</p>
+  <footer>Last package update: {{ updated }}</footer>
 </body>
 </html>
