@@ -132,6 +132,21 @@ def list_staged_tracks() -> list[Track]:
                     _, title = name.split(" - ", 1)
                 else:
                     title = name
+                cover_b64 = None
+                try:  # pragma: no cover - optional dependency
+                    from mutagen.id3 import ID3
+                    import base64
+                    tags = ID3(mp3)
+                    pics = tags.getall("APIC") if hasattr(tags, "getall") else []
+                    if pics:
+                        pic = pics[0]
+                        mime = getattr(pic, "mime", "image/jpeg")
+                        cover_b64 = "data:%s;base64,%s" % (
+                            mime,
+                            base64.b64encode(pic.data).decode("ascii"),
+                        )
+                except Exception:
+                    cover_b64 = None
                 tracks.append(
                     Track(
                         job_id=0,
@@ -139,6 +154,7 @@ def list_staged_tracks() -> list[Track]:
                         album=album_dir.name,
                         title=title,
                         filepath=str(mp3),
+                        cover=cover_b64,
                     )
                 )
 
