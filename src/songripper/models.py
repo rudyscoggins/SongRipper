@@ -45,4 +45,7 @@ class Track(SQLModel, table=True):
     filepath: str
     id: Optional[int] = Field(default=None, primary_key=True)
     approved: bool = False
+    # base64 encoded album art from the MP3's ID3 tag.  May be ``None`` when
+    # no cover image is found or when tag parsing dependencies are missing.
+    cover: Optional[str] = None
 

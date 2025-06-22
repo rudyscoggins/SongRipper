@@ -1,6 +1,7 @@
 <table>
   <thead>
     <tr>
+      <th>Art</th>
       <th>Artist</th>
       <th>Album</th>
       <th>Title</th>
@@ -10,6 +11,13 @@
   <tbody>
   {% for track in tracks %}
     <tr>
+      <td>
+        {% if track.cover %}
+          <img src="{{ track.cover }}" alt="cover" class="album-art">
+        {% else %}
+          &mdash;
+        {% endif %}
+      </td>
       <td>{{ track.artist }}</td>
       <td>{{ track.album }}</td>
       <td>{{ track.title }}</td>
