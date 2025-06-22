@@ -27,6 +27,11 @@ class FastAPI:
             return fn
         return deco
 
+    def put(self, *args, **kwargs):
+        def deco(fn):
+            return fn
+        return deco
+
 fastapi.FastAPI = FastAPI
 fastapi.Form = lambda *a, **kw: None
 class Request:

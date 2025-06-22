@@ -12,6 +12,7 @@ from .worker import (
 )
 from .settings import CACHE_BUSTER
 from . import PACKAGE_TIME
+from . import worker
 app = FastAPI()
 
 @app.middleware("http")
@@ -69,3 +70,28 @@ def staging(req: Request):
     tracks = list_staged_tracks()
     context = {"request": req, "tracks": tracks}
     return templates.TemplateResponse("staging.html", context)
+
+@app.get("/edit", response_class=HTMLResponse)
+def edit_form(filepath: str, field: str):
+    tags = worker.read_tags(filepath)
+    value = tags.get(field, "")
+    html = (
+        "<td><form hx-put=\"/edit\" hx-target=\"closest td\" hx-swap=\"outerHTML\">"
+        f"<input type=\"text\" name=\"value\" value=\"{value}\" autofocus>"
+        f"<input type=\"hidden\" name=\"filepath\" value=\"{filepath}\">"
+        f"<input type=\"hidden\" name=\"field\" value=\"{field}\">"
+        "</form></td>"
+    )
+    return HTMLResponse(html)
+
+
+@app.put("/edit")
+def edit(filepath: str = Form(...), field: str = Form(...), value: str = Form(...)):
+    new_path = worker.update_track(filepath, field, value)
+    headers = {"HX-Trigger": "refreshStaging"}
+    html = (
+        f'<td hx-get="/edit?filepath={new_path}&field={field}" '
+        'hx-trigger="click" hx-target="this" hx-swap="outerHTML">'
+        f'{value}</td>'
+    )
+    return HTMLResponse(html, headers=headers)
