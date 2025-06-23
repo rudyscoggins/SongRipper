@@ -108,3 +108,10 @@ def test_delete_non_hx_redirect(monkeypatch):
     resp = api.delete(req)
     assert resp.status_code == 303
     assert resp.headers["location"] == "/?msg=Files+deleted"
+
+
+def test_rip_form_has_afterrequest_handler():
+    template_path = os.path.join(os.path.dirname(__file__), "..", "src", "songripper", "templates", "index.html")
+    with open(template_path) as fh:
+        html = fh.read()
+    assert "hx-on:afterRequest" in html
