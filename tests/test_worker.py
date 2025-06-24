@@ -132,3 +132,70 @@ def test_list_staged_tracks(tmp_path):
         ("Artist1", "Album1", "Song1", str(f1)),
         ("Artist2", "Album2", "Song2", str(f2)),
     ]
+
+
+def test_mp3_from_url_embeds_thumbnail_when_no_itunes(monkeypatch, tmp_path):
+    meta = {
+        "artist": "Bad/Artist",
+        "track": "Bad:Title?",
+        "album": "Alb<>um",
+        "uploader": "Uploader",
+        "title": "Some Title",
+        "playlist": "List",
+        "thumbnail": "http://thumb/img.jpg",
+    }
+
+    def fake_check_output(cmd, text=True):
+        return json.dumps(meta)
+
+    monkeypatch.setattr(worker.subprocess, "check_output", fake_check_output)
+    monkeypatch.setattr(worker.subprocess, "run", lambda *a, **kw: None)
+    monkeypatch.setattr(worker, "fetch_cover", lambda a, t: None)
+
+    thumb_calls = []
+
+    def fake_fetch_thumb(url):
+        thumb_calls.append(url)
+        return b"thumb"
+
+    monkeypatch.setattr(worker, "fetch_thumbnail", fake_fetch_thumb)
+
+    class DummyEasyID3(dict):
+        def __init__(self, path):
+            self.path = path
+        def save(self):
+            pass
+
+    id3_objects = []
+
+    class DummyID3(dict):
+        def __init__(self, path):
+            self.path = path
+            id3_objects.append(self)
+        def save(self):
+            pass
+
+    class DummyAPIC:
+        def __init__(self, **kw):
+            self.kw = kw
+
+    monkeypatch.setitem(
+        sys.modules,
+        "mutagen.easyid3",
+        types.SimpleNamespace(EasyID3=DummyEasyID3),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "mutagen.id3",
+        types.SimpleNamespace(ID3=DummyID3, APIC=DummyAPIC),
+    )
+
+    artist, album, path = worker.mp3_from_url("http://x", tmp_path)
+
+    artist_clean = worker.clean(meta["artist"])
+    title_clean = worker.clean(meta["track"])
+
+    assert thumb_calls == [meta["thumbnail"]]
+    assert isinstance(id3_objects[0]["APIC"], DummyAPIC)
+    assert id3_objects[0]["APIC"].kw["data"] == b"thumb"
+    assert path == tmp_path / f"{artist_clean} - {title_clean}.mp3"
