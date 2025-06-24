@@ -38,6 +38,25 @@ def fetch_cover(artist: str, title: str, requests_mod=None) -> bytes | None:
     except Exception:
         return None
 
+
+def fetch_thumbnail(url: str, requests_mod=None) -> bytes | None:
+    """Return thumbnail image bytes from ``url`` if possible.
+
+    Any network error results in ``None``. The ``requests_mod`` parameter
+    allows dependency injection for unit tests.
+    """
+    try:
+        if requests_mod is None:
+            try:
+                import requests as requests_mod  # type: ignore
+            except Exception:
+                return None
+        res = requests_mod.get(url, timeout=10)
+        res.raise_for_status()
+        return res.content
+    except Exception:
+        return None
+
 def mp3_from_url(url: str, staging_dir: Path):
     # 1. get metadata only
     meta = json.loads(subprocess.check_output(
@@ -65,10 +84,27 @@ def mp3_from_url(url: str, staging_dir: Path):
         audio["artist"], audio["title"], audio["album"] = [artist], [title], [album]
         audio.save()
         cover = fetch_cover(artist, title)
+        if cover is None:
+            thumb_url = meta.get("thumbnail")
+            if thumb_url is None:
+                thumbs = meta.get("thumbnails")
+                if isinstance(thumbs, list) and thumbs:
+                    first = thumbs[0]
+                    if isinstance(first, dict):
+                        thumb_url = first.get("url")
+                    else:
+                        thumb_url = first
+            if thumb_url:
+                cover = fetch_thumbnail(thumb_url)
         if cover:
             tags = ID3(mp3_path)
-            tags["APIC"] = APIC(encoding=3, mime="image/jpeg",
-                                type=3, desc=u"Cover", data=cover)
+            tags["APIC"] = APIC(
+                encoding=3,
+                mime="image/jpeg",
+                type=3,
+                desc=u"Cover",
+                data=cover,
+            )
             tags.save()
     return artist, album, mp3_path
 
