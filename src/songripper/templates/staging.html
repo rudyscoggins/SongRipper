@@ -28,3 +28,17 @@
   {% endfor %}
   </tbody>
 </table>
+<form id="multi-edit" hx-post="/edit-multiple" hx-swap="none"
+      hx-include="[name=track]:checked"
+      hx-on:afterRequest="document.body.dispatchEvent(new Event('refreshStaging'))">
+  <div>
+    <label><input type="checkbox" name="artist_enable"> Artist</label>
+    <input type="text" name="artist_value"></div>
+  <div>
+    <label><input type="checkbox" name="album_enable"> Album</label>
+    <input type="text" name="album_value"></div>
+  <div>
+    <label><input type="checkbox" name="title_enable"> Title</label>
+    <input type="text" name="title_value"></div>
+  <button type="submit">Edit Multiple</button>
+</form>

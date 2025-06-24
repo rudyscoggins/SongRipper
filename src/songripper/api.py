@@ -95,3 +95,29 @@ def edit(filepath: str = Form(...), field: str = Form(...), value: str = Form(..
         f'{value}</td>'
     )
     return HTMLResponse(html, headers=headers)
+
+
+@app.post("/edit-multiple")
+def edit_multiple(
+    request: Request,
+    track: list[str] = Form([]),
+    artist_value: str = Form(""),
+    artist_enable: str | None = Form(None),
+    album_value: str = Form(""),
+    album_enable: str | None = Form(None),
+    title_value: str = Form(""),
+    title_enable: str | None = Form(None),
+):
+    for path in track:
+        p = path
+        if artist_enable:
+            p = str(worker.update_track(p, "artist", artist_value))
+        if album_enable:
+            p = str(worker.update_track(p, "album", album_value))
+        if title_enable:
+            p = str(worker.update_track(p, "title", title_value))
+    if request.headers.get("Hx-Request"):
+        resp = HTMLResponse("", status_code=204)
+        resp.headers["HX-Trigger"] = "refreshStaging"
+        return resp
+    return RedirectResponse("/", status_code=303)
