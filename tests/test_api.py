@@ -115,3 +115,40 @@ def test_rip_form_has_afterrequest_handler():
     with open(template_path) as fh:
         html = fh.read()
     assert "hx-on:afterRequest" in html
+
+
+def test_edit_multiple_updates_fields(monkeypatch):
+    calls = []
+
+    def fake_update(fp, field, val):
+        calls.append((fp, field, val))
+        return f"{fp}:{field}"
+
+    monkeypatch.setattr(api.worker, "update_track", fake_update)
+    req = types.SimpleNamespace(headers={"Hx-Request": "1"})
+    resp = api.edit_multiple(
+        req,
+        track=["file.mp3"],
+        artist_value="A",
+        artist_enable="on",
+        album_value="B",
+        album_enable="on",
+        title_value="",
+        title_enable=None,
+    )
+    assert resp.status_code == 204
+    assert resp.headers["HX-Trigger"] == "refreshStaging"
+    assert calls == [
+        ("file.mp3", "artist", "A"),
+        ("file.mp3:artist", "album", "B"),
+    ]
+
+
+def test_staging_template_has_multi_edit_form():
+    path = os.path.join(
+        os.path.dirname(__file__), "..", "src", "songripper", "templates", "staging.html"
+    )
+    with open(path) as fh:
+        html = fh.read()
+    assert "Edit Multiple" in html
+    assert "hx-post=\"/edit-multiple\"" in html
