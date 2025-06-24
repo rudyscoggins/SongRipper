@@ -1,6 +1,7 @@
 <table>
   <thead>
     <tr>
+      <th></th>
       <th>Art</th>
       <th>Artist</th>
       <th>Album</th>
@@ -11,6 +12,7 @@
   <tbody>
   {% for track in tracks %}
     <tr>
+      <td><input type="checkbox" name="track" value="{{ track.filepath }}"></td>
       <td>
         {% if track.cover %}
           <img src="{{ track.cover }}" alt="cover" class="album-art">
