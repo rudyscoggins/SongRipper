@@ -20,9 +20,9 @@
           &mdash;
         {% endif %}
       </td>
-      <td hx-get="/edit?filepath={{ track.filepath }}&field=artist" hx-trigger="click" hx-target="this" hx-swap="outerHTML">{{ track.artist }}</td>
-      <td hx-get="/edit?filepath={{ track.filepath }}&field=album" hx-trigger="click" hx-target="this" hx-swap="outerHTML">{{ track.album }}</td>
-      <td hx-get="/edit?filepath={{ track.filepath }}&field=title" hx-trigger="click" hx-target="this" hx-swap="outerHTML">{{ track.title }}</td>
+      <td data-field="artist" class="editable-field">{{ track.artist }}</td>
+      <td data-field="album" class="editable-field">{{ track.album }}</td>
+      <td data-field="title" class="editable-field">{{ track.title }}</td>
       <td>{{ track.filepath }}</td>
     </tr>
   {% endfor %}
