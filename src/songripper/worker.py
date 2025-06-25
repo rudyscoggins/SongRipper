@@ -231,6 +231,7 @@ def update_track(filepath: str, field: str, value: str) -> Path:
     The file is renamed and moved inside the staging directory to match
     the updated artist/album/title structure.  Returns the new path.
     """
+    value = clean(value)
     tags = read_tags(filepath)
     tags[field] = value
     try:

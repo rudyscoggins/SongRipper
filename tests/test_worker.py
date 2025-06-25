@@ -199,3 +199,16 @@ def test_mp3_from_url_embeds_thumbnail_when_no_itunes(monkeypatch, tmp_path):
     assert isinstance(id3_objects[0]["APIC"], DummyAPIC)
     assert id3_objects[0]["APIC"].kw["data"] == b"thumb"
     assert path == tmp_path / f"{artist_clean} - {title_clean}.mp3"
+
+
+def test_update_track_sanitizes_new_value(tmp_path):
+    worker.DATA_DIR = tmp_path
+    staging = tmp_path / "staging" / "Artist" / "Album"
+    staging.mkdir(parents=True)
+    track = staging / "Artist - Song.mp3"
+    track.write_text("x")
+
+    new_path = worker.update_track(str(track), "artist", "AC/DC")
+
+    assert new_path.name == "AC_DC - Song.mp3"
+    assert new_path.exists()
