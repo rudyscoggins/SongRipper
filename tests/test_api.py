@@ -144,6 +144,36 @@ def test_edit_multiple_updates_fields(monkeypatch):
     ]
 
 
+def test_edit_handles_missing_file(monkeypatch):
+    def fake_update(fp, field, val):
+        raise worker.TrackUpdateError("not found")
+
+    monkeypatch.setattr(api.worker, "update_track", fake_update)
+    resp = api.edit(filepath="x.mp3", field="artist", value="A")
+    assert resp.status_code == 400
+    assert "not found" in resp.text
+
+
+def test_edit_multiple_handles_missing_file(monkeypatch):
+    def fake_update(fp, field, val):
+        raise worker.TrackUpdateError("bad")
+
+    monkeypatch.setattr(api.worker, "update_track", fake_update)
+    req = types.SimpleNamespace(headers={"Hx-Request": "1"})
+    resp = api.edit_multiple(
+        req,
+        track=["song.mp3"],
+        artist_value="A",
+        artist_enable="on",
+        album_value="",
+        album_enable=None,
+        title_value="",
+        title_enable=None,
+    )
+    assert resp.status_code == 400
+    assert "bad" in resp.text
+
+
 def test_staging_template_has_multi_edit_form():
     path = os.path.join(
         os.path.dirname(__file__), "..", "src", "songripper", "templates", "staging.html"
