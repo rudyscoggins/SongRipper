@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
   fadeOutAlerts(alerts);
   updateApprovalButton();
   document.body.addEventListener('click', fillMultiEditFromCell);
+  syncSelectAll();
 });
 
 document.addEventListener('htmx:afterSwap', function (evt) {
@@ -21,6 +22,7 @@ document.addEventListener('htmx:afterSwap', function (evt) {
   }
   if (evt.target.id === 'staging-list') {
     updateApprovalButton();
+    syncSelectAll();
   }
 });
 
@@ -43,3 +45,24 @@ function fillMultiEditFromCell(e) {
   if (input) input.value = td.textContent.trim();
   if (checkbox) checkbox.checked = true;
 }
+
+function toggleAllTracks(checked) {
+  document.querySelectorAll('#staging-list input[name=track]').forEach(cb => {
+    cb.checked = checked;
+  });
+}
+
+function syncSelectAll() {
+  const selectAll = document.getElementById('select-all');
+  if (!selectAll) return;
+  const boxes = document.querySelectorAll('#staging-list input[name=track]');
+  selectAll.checked = boxes.length > 0 && Array.from(boxes).every(cb => cb.checked);
+}
+
+document.addEventListener('change', function (e) {
+  if (e.target.id === 'select-all') {
+    toggleAllTracks(e.target.checked);
+  } else if (e.target.matches('#staging-list input[name=track]')) {
+    syncSelectAll();
+  }
+});
