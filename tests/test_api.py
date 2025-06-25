@@ -1,6 +1,7 @@
 import os
 import sys
 import types
+from pathlib import Path
 
 # Provide a minimal fastapi stub so the module under test can be imported
 fastapi = types.ModuleType("fastapi")
@@ -44,10 +45,10 @@ fastapi.BackgroundTasks = BackgroundTasks
 
 responses = types.ModuleType("fastapi.responses")
 class HTMLResponse:
-    def __init__(self, content="", status_code=200):
+    def __init__(self, content="", status_code=200, headers=None):
         self.text = content
         self.status_code = status_code
-        self.headers = {}
+        self.headers = headers or {}
 class RedirectResponse(HTMLResponse):
     def __init__(self, url, status_code=307):
         super().__init__("", status_code)
@@ -152,6 +153,16 @@ def test_edit_handles_missing_file(monkeypatch):
     resp = api.edit(filepath="x.mp3", field="artist", value="A")
     assert resp.status_code == 400
     assert "not found" in resp.text
+
+
+def test_edit_returns_new_path_and_trigger(monkeypatch):
+    def fake_update(fp, field, val):
+        return Path("/new/location.mp3")
+
+    monkeypatch.setattr(api.worker, "update_track", fake_update)
+    resp = api.edit(filepath="x.mp3", field="artist", value="A")
+    assert resp.headers["HX-Trigger"] == "refreshStaging"
+    assert "hx-get=\"/edit?filepath=/new/location.mp3&field=artist\"" in resp.text
 
 
 def test_edit_multiple_handles_missing_file(monkeypatch):

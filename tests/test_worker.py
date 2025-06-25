@@ -219,3 +219,37 @@ def test_update_track_missing_file_raises(tmp_path):
     missing = tmp_path / "staging" / "bad.mp3"
     with pytest.raises(worker.TrackUpdateError):
         worker.update_track(str(missing), "artist", "A")
+
+
+def test_update_track_moves_file_and_listing_updates(tmp_path):
+    worker.DATA_DIR = tmp_path
+
+    staging = tmp_path / "staging" / "OldArtist" / "OldAlbum"
+    staging.mkdir(parents=True)
+    track = staging / "OldArtist - OldTitle.mp3"
+    track.write_text("x")
+
+    # Update artist
+    p1 = worker.update_track(str(track), "artist", "NewArtist")
+    assert p1 == tmp_path / "staging" / "NewArtist" / "OldAlbum" / "NewArtist - OldTitle.mp3"
+    assert p1.exists()
+    assert not track.exists()
+    tr = worker.list_staged_tracks()
+    assert [(t.artist, t.album, t.title) for t in tr] == [("NewArtist", "OldAlbum", "OldTitle")]
+
+    # Update album
+    p2 = worker.update_track(str(p1), "album", "NewAlbum")
+    assert p2 == tmp_path / "staging" / "NewArtist" / "NewAlbum" / "NewArtist - OldTitle.mp3"
+    assert p2.exists()
+    assert not p1.exists()
+    tr = worker.list_staged_tracks()
+    assert [(t.artist, t.album, t.title) for t in tr] == [("NewArtist", "NewAlbum", "OldTitle")]
+
+    # Update title
+    p3 = worker.update_track(str(p2), "title", "NewTitle")
+    assert p3 == tmp_path / "staging" / "NewArtist" / "NewAlbum" / "NewArtist - NewTitle.mp3"
+    assert p3.exists()
+    tr = worker.list_staged_tracks()
+    assert [(t.artist, t.album, t.title) for t in tr] == [
+        ("NewArtist", "NewAlbum", "NewTitle")
+    ]
