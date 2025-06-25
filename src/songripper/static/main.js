@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const alerts = document.getElementById('alerts');
   fadeOutAlerts(alerts);
   updateApprovalButton();
+  attachSelectAllHandler();
 });
 
 document.addEventListener('htmx:afterSwap', function (evt) {
@@ -20,6 +21,7 @@ document.addEventListener('htmx:afterSwap', function (evt) {
   }
   if (evt.target.id === 'staging-list') {
     updateApprovalButton();
+    attachSelectAllHandler();
   }
 });
 
@@ -62,4 +64,16 @@ function updateApprovalButton() {
   if (!btn) return;
   const hasTracks = document.querySelector('#staging-list tbody tr') !== null;
   btn.disabled = !hasTracks;
+}
+
+function attachSelectAllHandler() {
+  const selectAll = document.getElementById('select-all');
+  if (!selectAll) return;
+  selectAll.addEventListener('change', function () {
+    document
+      .querySelectorAll('#staging-list input[name="track"]')
+      .forEach(cb => {
+        cb.checked = selectAll.checked;
+      });
+  });
 }
