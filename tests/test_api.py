@@ -193,3 +193,13 @@ def test_staging_template_has_multi_edit_form():
         html = fh.read()
     assert "Edit Multiple" in html
     assert "hx-post=\"/edit-multiple\"" in html
+
+
+def test_staging_template_has_select_all_checkbox():
+    path = os.path.join(
+        os.path.dirname(__file__), "..", "src", "songripper", "templates", "staging.html"
+    )
+    with open(path) as fh:
+        html = fh.read()
+    assert 'id="select-all"' in html
+    assert "Select All" in html
