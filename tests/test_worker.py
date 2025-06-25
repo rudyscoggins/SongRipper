@@ -212,3 +212,10 @@ def test_update_track_sanitizes_new_value(tmp_path):
 
     assert new_path.name == "AC_DC - Song.mp3"
     assert new_path.exists()
+
+
+def test_update_track_missing_file_raises(tmp_path):
+    worker.DATA_DIR = tmp_path
+    missing = tmp_path / "staging" / "bad.mp3"
+    with pytest.raises(worker.TrackUpdateError):
+        worker.update_track(str(missing), "artist", "A")

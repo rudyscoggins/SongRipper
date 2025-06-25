@@ -1,6 +1,11 @@
 # src/songripper/worker.py
 import subprocess, json, shutil, re
 from pathlib import Path
+
+
+class TrackUpdateError(Exception):
+    """Raised when an update operation cannot be completed."""
+    pass
 from .settings import DATA_DIR, NAS_PATH
 from .models import Track
 
@@ -248,12 +253,17 @@ def update_track(filepath: str, field: str, value: str) -> Path:
         except Exception:
             pass
     path = Path(filepath)
+    if not path.exists():
+        raise TrackUpdateError(f"File not found: {filepath}")
     staging_root = DATA_DIR / "staging"
     dest_dir = staging_root / tags["artist"] / tags["album"]
     dest_dir.mkdir(parents=True, exist_ok=True)
     new_path = dest_dir / f"{tags['artist']} - {tags['title']}.mp3"
     if path.resolve() != new_path.resolve():
-        path.rename(new_path)
+        try:
+            path.rename(new_path)
+        except OSError as e:
+            raise TrackUpdateError(str(e))
         # remove empty directories
         parent = path.parent
         while parent != staging_root:

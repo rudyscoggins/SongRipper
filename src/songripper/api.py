@@ -9,6 +9,7 @@ from .worker import (
     delete_staging,
     staging_has_files,
     list_staged_tracks,
+    TrackUpdateError,
 )
 from .settings import CACHE_BUSTER
 from . import PACKAGE_TIME
@@ -87,7 +88,11 @@ def edit_form(filepath: str, field: str):
 
 @app.put("/edit")
 def edit(filepath: str = Form(...), field: str = Form(...), value: str = Form(...)):
-    new_path = worker.update_track(filepath, field, value)
+    try:
+        new_path = worker.update_track(filepath, field, value)
+    except TrackUpdateError as exc:
+        html = f"<td>{exc}</td>"
+        return HTMLResponse(html, status_code=400)
     headers = {"HX-Trigger": "refreshStaging"}
     html = (
         f'<td hx-get="/edit?filepath={new_path}&field={field}" '
@@ -111,11 +116,20 @@ def edit_multiple(
     for path in track:
         p = path
         if artist_enable:
-            p = str(worker.update_track(p, "artist", artist_value))
+            try:
+                p = str(worker.update_track(p, "artist", artist_value))
+            except TrackUpdateError as exc:
+                return HTMLResponse(str(exc), status_code=400)
         if album_enable:
-            p = str(worker.update_track(p, "album", album_value))
+            try:
+                p = str(worker.update_track(p, "album", album_value))
+            except TrackUpdateError as exc:
+                return HTMLResponse(str(exc), status_code=400)
         if title_enable:
-            p = str(worker.update_track(p, "title", title_value))
+            try:
+                p = str(worker.update_track(p, "title", title_value))
+            except TrackUpdateError as exc:
+                return HTMLResponse(str(exc), status_code=400)
     if request.headers.get("Hx-Request"):
         resp = HTMLResponse("", status_code=204)
         resp.headers["HX-Trigger"] = "refreshStaging"
