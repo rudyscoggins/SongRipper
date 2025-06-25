@@ -8,6 +8,14 @@ function fadeOutAlerts(container) {
   }
 }
 
+function showAlert(msg) {
+  const alerts = document.getElementById('alerts');
+  if (alerts) {
+    alerts.innerHTML = `<p id="message">${msg}</p>`;
+    fadeOutAlerts(alerts);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
   const alerts = document.getElementById('alerts');
   fadeOutAlerts(alerts);
@@ -22,6 +30,53 @@ document.addEventListener('htmx:afterSwap', function (evt) {
     updateApprovalButton();
   }
 });
+
+if (!window.htmx) {
+  // Minimal fallback so inline editing works when the CDN script fails to load
+  document.addEventListener('DOMContentLoaded', function () {
+    document.body.addEventListener('click', function (e) {
+      const td = e.target.closest('td[hx-get][hx-trigger="click"]');
+      if (!td) return;
+      fetch(td.getAttribute('hx-get'))
+        .then(r => {
+          if (!r.ok) throw new Error('fetch');
+          return r.text();
+        })
+        .then(html => {
+          td.outerHTML = html;
+        })
+        .catch(() => {
+          showAlert('Error loading form');
+        });
+    });
+
+    document.body.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      const input = e.target;
+      if (!(input instanceof HTMLInputElement)) return;
+      const form = input.form;
+      if (!form || !form.hasAttribute('hx-put')) return;
+      e.preventDefault();
+      const data = new FormData(form);
+      fetch(form.getAttribute('hx-put'), {
+        method: 'PUT',
+        body: data
+      })
+        .then(r => {
+          if (!r.ok) throw new Error('fetch');
+          return r.text();
+        })
+        .then(html => {
+          const td = form.closest('td');
+          if (td) td.outerHTML = html;
+          document.body.dispatchEvent(new Event('refreshStaging'));
+        })
+        .catch(() => {
+          showAlert('Error saving change');
+        });
+    });
+  });
+}
 
 function updateApprovalButton() {
   const btn = document.getElementById('approve-btn');
