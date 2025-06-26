@@ -22,15 +22,6 @@
   <button type="submit">Rip!</button>
 </form>
 
-<h3>Approve staged tracks</h3>
-<div class="approval-actions">
-  <form hx-post="/approve" hx-swap="none">
-    <button id="approve-btn" type="submit"{% if not has_staged_files %} disabled{% endif %}>Approve & Move All</button>
-  </form>
-    <form hx-post="/delete" hx-target="#alerts" hx-swap="innerHTML">
-      <button type="submit">Unapprove and Delete Staging</button>
-    </form>
-</div>
 <p>Staged files live in <code>./data/staging/</code> until you approve.</p>
   <div id="staging-list" hx-get="/staging" hx-trigger="load, refreshStaging from:body"></div>
   <h3>How to Use</h3>
