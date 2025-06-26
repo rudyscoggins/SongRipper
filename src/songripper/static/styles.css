@@ -97,3 +97,11 @@ footer {
 .track-table td {
   border: 1px solid #666;
 }
+
+/* Group box for edit fields */
+#multi-edit fieldset.edit-fields {
+  border: 1px solid lime;
+  padding: 0.5em;
+  margin-bottom: 1em;
+  border-radius: 4px;
+}
