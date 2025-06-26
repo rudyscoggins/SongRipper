@@ -87,3 +87,13 @@ footer {
   height: 50px;
   object-fit: cover;
 }
+
+/* Styling for the track table */
+.track-table {
+  background-color: #333;
+}
+
+.track-table th,
+.track-table td {
+  border: 1px solid #666;
+}
