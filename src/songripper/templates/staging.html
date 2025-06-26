@@ -46,3 +46,13 @@
 {% else %}
 <p id="no-tracks">No tracks found</p>
 {% endif %}
+
+<h3>Approve staged tracks</h3>
+<div class="approval-actions">
+  <form hx-post="/approve" hx-swap="none">
+    <button id="approve-btn" type="submit"{% if not tracks %} disabled{% endif %}>Approve & Move All</button>
+  </form>
+  <form hx-post="/delete" hx-target="#alerts" hx-swap="innerHTML">
+    <button type="submit">Unapprove and Delete Staging</button>
+  </form>
+</div>
