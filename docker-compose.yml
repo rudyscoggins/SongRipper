@@ -23,7 +23,7 @@ services:
     env_file:
       - .env
     command: >
-      --interval 180
+      --interval 60
       --scope songripper
       -n shoutrrr
       --notification-url=telegram://${WATCHTOWER_TELEGRAM_TOKEN}@telegram?channels=${WATCHTOWER_TELEGRAM_CHAT_ID}
