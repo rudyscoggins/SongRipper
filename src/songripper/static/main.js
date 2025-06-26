@@ -44,6 +44,7 @@ function fillMultiEditFromCell(e) {
   const checkbox = form.querySelector(`input[name="${field}_enable"]`);
   if (input) input.value = td.textContent.trim();
   if (checkbox) checkbox.checked = true;
+  form.scrollIntoView({behavior: 'smooth'});
   const row = td.closest('tr');
   if (row) {
     const trackBox = row.querySelector('input[name=track]');
