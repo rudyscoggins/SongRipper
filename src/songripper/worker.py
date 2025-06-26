@@ -67,15 +67,23 @@ def mp3_from_url(url: str, staging_dir: Path):
     meta = json.loads(subprocess.check_output(
         YT_BASE + ["-J", "--no-playlist", url], text=True))
     artist = clean(meta.get("artist") or meta["uploader"])
-    title  = clean(meta.get("track")  or meta["title"])
-    album  = clean(meta.get("album")  or meta.get("playlist") or "Singles")
+    title = clean(meta.get("track") or meta["title"])
+    album = clean(meta.get("album") or meta.get("playlist") or "Singles")
+    track_no = meta.get("track_number")
+    prefix = ""
+    if track_no:
+        try:
+            num = int(str(track_no).split("/", 1)[0])
+            prefix = f"{num:02d} "
+        except ValueError:
+            prefix = ""
 
     # 2. download + convert to MP3
-    outtmpl = str(staging_dir / f"{artist} - {title}.%(ext)s")
+    outtmpl = str(staging_dir / f"{prefix}{title}.%(ext)s")
     subprocess.run(YT_BASE + ["-x", "--audio-format", "mp3",
                               "-o", outtmpl, url], check=True)
 
-    mp3_path = staging_dir / f"{artist} - {title}.mp3"
+    mp3_path = staging_dir / f"{prefix}{title}.mp3"
     # 3. tag file.  Import mutagen lazily so the module can be imported
     # even when the dependency is missing (e.g. in unit tests).
     try:
@@ -87,6 +95,8 @@ def mp3_from_url(url: str, staging_dir: Path):
     if EasyID3 is not None:
         audio = EasyID3(mp3_path)
         audio["artist"], audio["title"], audio["album"] = [artist], [title], [album]
+        if prefix:
+            audio["tracknumber"] = [prefix.strip()]
         audio.save()
         cover = fetch_cover(artist, title)
         if cover is None:
@@ -169,8 +179,8 @@ def list_staged_tracks() -> list[Track]:
                 continue
             for mp3 in album_dir.glob("*.mp3"):
                 name = mp3.stem
-                if " - " in name:
-                    _, title = name.split(" - ", 1)
+                if re.match(r"\d{2} ", name):
+                    title = name[3:]
                 else:
                     title = name
                 cover_b64 = None
@@ -215,15 +225,17 @@ def read_tags(filepath: str) -> dict[str, str]:
     if EasyID3 is not None:
         try:
             audio = EasyID3(path)
+            name = path.stem
+            title_from_file = name[3:] if re.match(r"\d{2} ", name) else name
             return {
                 "artist": audio.get("artist", [path.parents[1].name])[0],
                 "album": audio.get("album", [path.parent.name])[0],
-                "title": audio.get("title", [path.stem])[0],
+                "title": audio.get("title", [title_from_file])[0],
             }
         except Exception:
             pass
     name = path.stem
-    title = name.split(" - ", 1)[1] if " - " in name else name
+    title = name[3:] if re.match(r"\d{2} ", name) else name
     return {
         "artist": path.parents[1].name,
         "album": path.parent.name,
@@ -258,7 +270,10 @@ def update_track(filepath: str, field: str, value: str) -> Path:
     staging_root = DATA_DIR / "staging"
     dest_dir = staging_root / tags["artist"] / tags["album"]
     dest_dir.mkdir(parents=True, exist_ok=True)
-    new_path = dest_dir / f"{tags['artist']} - {tags['title']}.mp3"
+    prefix = ""
+    if re.match(r"\d{2} ", path.stem):
+        prefix = path.stem[:3]
+    new_path = dest_dir / f"{prefix}{tags['title']}.mp3"
     if path.resolve() != new_path.resolve():
         try:
             path.rename(new_path)

@@ -80,11 +80,11 @@ def test_mp3_from_url(tmp_path, monkeypatch):
 
     assert artist == artist_clean
     assert album == album_clean
-    assert path == tmp_path / f"{artist_clean} - {title_clean}.mp3"
+    assert path == tmp_path / f"{title_clean}.mp3"
 
     expected_out = worker.YT_BASE + [
         "-x", "--audio-format", "mp3",
-        "-o", str(tmp_path / f"{artist_clean} - {title_clean}.%(ext)s"),
+        "-o", str(tmp_path / f"{title_clean}.%(ext)s"),
         "http://x",
     ]
     assert run_calls == [(expected_out, True)]
@@ -93,4 +93,4 @@ def test_mp3_from_url(tmp_path, monkeypatch):
         worker.YT_BASE + ["-J", "--no-playlist", "http://x"],
         True,
     )]
-    assert easy_paths == [tmp_path / f"{artist_clean} - {title_clean}.mp3"]
+    assert easy_paths == [tmp_path / f"{title_clean}.mp3"]
