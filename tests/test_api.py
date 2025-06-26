@@ -203,3 +203,13 @@ def test_staging_template_has_select_all_checkbox():
         html = fh.read()
     assert 'id="select-all"' in html
     assert "Select All" in html
+
+
+def test_staging_template_shows_no_tracks_message():
+    path = os.path.join(
+        os.path.dirname(__file__), "..", "src", "songripper", "templates", "staging.html"
+    )
+    with open(path) as fh:
+        html = fh.read()
+    assert "No tracks found" in html
+    assert 'id="no-tracks"' in html
