@@ -191,7 +191,7 @@ def test_staging_template_has_multi_edit_form():
     )
     with open(path) as fh:
         html = fh.read()
-    assert "Edit Multiple" in html
+    assert "Edit Track(s)" in html
     assert "hx-post=\"/edit-multiple\"" in html
 
 
