@@ -1,5 +1,5 @@
 # src/songripper/api.py
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -112,7 +112,14 @@ def edit_multiple(
     album_enable: str | None = Form(None),
     title_value: str = Form(""),
     title_enable: str | None = Form(None),
+    art_file: UploadFile | None = File(None),
+    art_enable: str | None = Form(None),
 ):
+    art_bytes = None
+    art_mime = "image/jpeg"
+    if art_enable and art_file is not None and art_file.filename:
+        art_bytes = art_file.file.read()
+        art_mime = art_file.content_type or "image/jpeg"
     for path in track:
         p = path
         if artist_enable:
@@ -128,6 +135,11 @@ def edit_multiple(
         if title_enable:
             try:
                 p = str(worker.update_track(p, "title", title_value))
+            except TrackUpdateError as exc:
+                return HTMLResponse(str(exc), status_code=400)
+        if art_enable and art_bytes is not None:
+            try:
+                worker.update_album_art(p, art_bytes, art_mime)
             except TrackUpdateError as exc:
                 return HTMLResponse(str(exc), status_code=400)
     if request.headers.get("Hx-Request"):
