@@ -46,8 +46,10 @@ def rip(request: Request, playlist_url: str = Form(...)):
     return RedirectResponse("/", status_code=303)
 
 @app.post("/approve")
-def approve():
+def approve(request: Request):
     approve_all()
+    if request.headers.get("Hx-Request"):
+        return HTMLResponse("", status_code=204, headers={"HX-Trigger": "refreshStaging"})
     return RedirectResponse("/", status_code=303)
 
 @app.post("/delete")
