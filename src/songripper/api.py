@@ -1,5 +1,5 @@
 # src/songripper/api.py
-from fastapi import FastAPI, Request, Form, UploadFile, File
+from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -47,7 +47,13 @@ def rip(request: Request, playlist_url: str = Form(...)):
 
 @app.post("/approve")
 def approve(request: Request):
-    approve_all()
+    try:
+        approve_all()
+    except Exception as exc:
+        if request.headers.get("Hx-Request"):
+            context = {"request": request, "message": str(exc)}
+            return templates.TemplateResponse("message.html", context, status_code=500)
+        raise HTTPException(status_code=500, detail=str(exc))
     if request.headers.get("Hx-Request"):
         return HTMLResponse("", status_code=204, headers={"HX-Trigger": "refreshStaging"})
     return RedirectResponse("/", status_code=303)
