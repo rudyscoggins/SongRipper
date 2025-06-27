@@ -35,6 +35,8 @@ class FastAPI:
 
 fastapi.FastAPI = FastAPI
 fastapi.Form = lambda *a, **kw: None
+fastapi.File = lambda *a, **kw: None
+fastapi.UploadFile = object
 class Request:
     def __init__(self, headers=None):
         self.headers = headers or {}
@@ -126,6 +128,20 @@ def test_edit_multiple_updates_fields(monkeypatch):
         return f"{fp}:{field}"
 
     monkeypatch.setattr(api.worker, "update_track", fake_update)
+
+    art_calls = []
+
+    def fake_update_art(fp, data, mime):
+        art_calls.append((fp, data, mime))
+
+    monkeypatch.setattr(api.worker, "update_album_art", fake_update_art)
+
+    class DummyUpload:
+        def __init__(self, data=b"img"):
+            self.file = types.SimpleNamespace(read=lambda: data)
+            self.filename = "cover.png"
+            self.content_type = "image/png"
+
     req = types.SimpleNamespace(headers={"Hx-Request": "1"})
     resp = api.edit_multiple(
         req,
@@ -136,6 +152,8 @@ def test_edit_multiple_updates_fields(monkeypatch):
         album_enable="on",
         title_value="",
         title_enable=None,
+        art_file=DummyUpload(),
+        art_enable="on",
     )
     assert resp.status_code == 204
     assert resp.headers["HX-Trigger"] == "refreshStaging"
@@ -143,6 +161,7 @@ def test_edit_multiple_updates_fields(monkeypatch):
         ("file.mp3", "artist", "A"),
         ("file.mp3:artist", "album", "B"),
     ]
+    assert art_calls == [("file.mp3:artist:album", b"img", "image/png")]
 
 
 def test_edit_handles_missing_file(monkeypatch):
@@ -193,6 +212,16 @@ def test_staging_template_has_multi_edit_form():
         html = fh.read()
     assert "Edit Track(s)" in html
     assert "hx-post=\"/edit-multiple\"" in html
+
+
+def test_staging_template_has_album_art_field():
+    path = os.path.join(
+        os.path.dirname(__file__), "..", "src", "songripper", "templates", "staging.html"
+    )
+    with open(path) as fh:
+        html = fh.read()
+    assert 'name="art_file"' in html
+    assert 'name="art_enable"' in html
 
 
 def test_staging_template_has_select_all_checkbox():

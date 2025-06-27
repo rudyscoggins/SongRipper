@@ -31,7 +31,8 @@
 </table>
 <form id="multi-edit" hx-post="/edit-multiple" hx-swap="none"
       hx-include="[name=track]:checked"
-      hx-on:afterRequest="document.body.dispatchEvent(new Event('refreshStaging'))">
+      hx-on:afterRequest="document.body.dispatchEvent(new Event('refreshStaging'))"
+      enctype="multipart/form-data">
   <fieldset class="edit-fields">
     <div>
       <label><input type="checkbox" name="artist_enable"> Artist</label>
@@ -42,6 +43,9 @@
     <div>
       <label><input type="checkbox" name="title_enable"> Title</label>
       <input type="text" name="title_value"></div>
+    <div>
+      <label><input type="checkbox" name="art_enable"> Album Art</label>
+      <input type="file" name="art_file" accept="image/*"></div>
   </fieldset>
   <button type="submit">Edit Track(s)</button>
 </form>
