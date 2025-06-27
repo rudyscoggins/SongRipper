@@ -326,3 +326,23 @@ def test_update_album_art_missing_file_raises(tmp_path):
     with pytest.raises(worker.TrackUpdateError):
         worker.update_album_art(str(missing), b"img")
 
+
+def test_approve_all_merges_existing_artist(tmp_path):
+    worker.DATA_DIR = tmp_path
+    worker.NAS_PATH = tmp_path / "nas"
+
+    staging = tmp_path / "staging" / "Artist" / "NewAlbum"
+    staging.mkdir(parents=True)
+    (staging / "track.mp3").write_text("x")
+
+    existing = worker.NAS_PATH / "Artist" / "OldAlbum"
+    existing.mkdir(parents=True, exist_ok=True)
+    (existing / "old.mp3").write_text("y")
+
+    worker.approve_all()
+
+    assert (existing / "old.mp3").exists()
+    assert (worker.NAS_PATH / "Artist" / "NewAlbum" / "track.mp3").exists()
+    assert not (worker.NAS_PATH / "Artist" / "Artist").exists()
+    assert worker.staging_has_files() is False
+
