@@ -20,10 +20,14 @@ document.addEventListener('htmx:responseError', function (evt) {
   const alerts = document.getElementById('alerts');
   if (!alerts) return;
   alerts.innerHTML = evt.detail.xhr.responseText;
+  alerts.scrollIntoView({behavior: 'smooth'});
   fadeOutAlerts(alerts);
 });
 
 document.addEventListener('htmx:afterSwap', function (evt) {
+  if (evt.detail && evt.detail.xhr && evt.detail.xhr.status >= 400) {
+    evt.target.scrollIntoView({behavior: 'smooth'});
+  }
   if (evt.target.id === 'alerts') {
     fadeOutAlerts(evt.target);
   }
