@@ -253,3 +253,41 @@ def test_update_track_moves_file_and_listing_updates(tmp_path):
     assert [(t.artist, t.album, t.title) for t in tr] == [
         ("NewArtist", "NewAlbum", "NewTitle")
     ]
+
+
+def test_update_album_art_writes_image(monkeypatch, tmp_path):
+    mp3 = tmp_path / "song.mp3"
+    mp3.write_text("x")
+
+    id3_objects = []
+
+    class DummyID3(dict):
+        def __init__(self, path=None):
+            self.path = path
+            id3_objects.append(self)
+
+        def save(self, path=None):
+            self.saved = path
+
+    class DummyAPIC:
+        def __init__(self, **kw):
+            self.kw = kw
+
+    monkeypatch.setitem(
+        sys.modules,
+        "mutagen.id3",
+        types.SimpleNamespace(ID3=DummyID3, APIC=DummyAPIC),
+    )
+
+    worker.update_album_art(str(mp3), b"img", "image/png")
+
+    assert isinstance(id3_objects[0]["APIC"], DummyAPIC)
+    assert id3_objects[0]["APIC"].kw["data"] == b"img"
+    assert id3_objects[0]["APIC"].kw["mime"] == "image/png"
+    assert id3_objects[0].saved == mp3
+
+
+def test_update_album_art_missing_file_raises(tmp_path):
+    missing = tmp_path / "x.mp3"
+    with pytest.raises(worker.TrackUpdateError):
+        worker.update_album_art(str(missing), b"img")

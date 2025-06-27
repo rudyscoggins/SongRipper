@@ -288,3 +288,34 @@ def update_track(filepath: str, field: str, value: str) -> Path:
                 break
             parent = parent.parent
     return new_path
+
+
+def update_album_art(filepath: str, data: bytes, mime: str = "image/jpeg") -> None:
+    """Replace the album art of ``filepath`` with ``data``.
+
+    This is a no-op when tag parsing dependencies are missing.  A
+    :class:`TrackUpdateError` is raised if the file does not exist or the
+    artwork cannot be written.
+    """
+    path = Path(filepath)
+    if not path.exists():
+        raise TrackUpdateError(f"File not found: {filepath}")
+    try:  # pragma: no cover - optional dependency
+        from mutagen.id3 import ID3, APIC
+    except Exception:
+        return
+    try:
+        tags = ID3(path)
+    except Exception:
+        tags = ID3()
+    tags["APIC"] = APIC(
+        encoding=3,
+        mime=mime or "image/jpeg",
+        type=3,
+        desc="Cover",
+        data=data,
+    )
+    try:
+        tags.save(path)
+    except Exception as e:  # pragma: no cover - unexpected failure
+        raise TrackUpdateError(str(e))
