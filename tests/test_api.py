@@ -113,6 +113,24 @@ def test_delete_non_hx_redirect(monkeypatch):
     assert resp.headers["location"] == "/?msg=Files+deleted"
 
 
+def test_approve_hx_triggers_refresh(monkeypatch):
+    monkeypatch.setattr(worker, "approve_all", lambda: None)
+    monkeypatch.setattr(api, "approve_all", lambda: None)
+    req = types.SimpleNamespace(headers={"Hx-Request": "1"})
+    resp = api.approve(req)
+    assert resp.status_code == 204
+    assert resp.headers["HX-Trigger"] == "refreshStaging"
+
+
+def test_approve_non_hx_redirect(monkeypatch):
+    monkeypatch.setattr(worker, "approve_all", lambda: None)
+    monkeypatch.setattr(api, "approve_all", lambda: None)
+    req = types.SimpleNamespace(headers={})
+    resp = api.approve(req)
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/"
+
+
 def test_rip_form_has_afterrequest_handler():
     template_path = os.path.join(os.path.dirname(__file__), "..", "src", "songripper", "templates", "index.html")
     with open(template_path) as fh:
