@@ -55,7 +55,7 @@
 
 <h3>Approve staged tracks</h3>
 <div class="approval-actions">
-  <form hx-post="/approve" hx-swap="none">
+  <form hx-post="/approve" hx-target="#alerts" hx-swap="innerHTML">
     <button id="approve-btn" type="submit"{% if not tracks %} disabled{% endif %}>Approve & Move All</button>
   </form>
   <form hx-post="/delete" hx-target="#alerts" hx-swap="innerHTML">

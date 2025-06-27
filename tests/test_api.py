@@ -37,6 +37,12 @@ fastapi.FastAPI = FastAPI
 fastapi.Form = lambda *a, **kw: None
 fastapi.File = lambda *a, **kw: None
 fastapi.UploadFile = object
+class HTTPException(Exception):
+    def __init__(self, status_code: int, detail: str):
+        self.status_code = status_code
+        self.detail = detail
+
+fastapi.HTTPException = HTTPException
 class Request:
     def __init__(self, headers=None):
         self.headers = headers or {}
@@ -63,8 +69,8 @@ templating = types.ModuleType("fastapi.templating")
 class Jinja2Templates:
     def __init__(self, directory):
         self.directory = directory
-    def TemplateResponse(self, name, context):
-        return HTMLResponse(context.get("message", ""))
+    def TemplateResponse(self, name, context, status_code=200):
+        return HTMLResponse(context.get("message", ""), status_code=status_code)
 templating.Jinja2Templates = Jinja2Templates
 fastapi.templating = templating
 
@@ -115,10 +121,23 @@ def test_delete_non_hx_redirect(monkeypatch):
 
 def test_approve_hx_triggers_refresh(monkeypatch):
     monkeypatch.setattr(worker, "approve_all", lambda: None)
+    monkeypatch.setattr(api, "approve_all", worker.approve_all)
     req = types.SimpleNamespace(headers={"Hx-Request": "1"})
     resp = api.approve(req)
     assert resp.status_code == 204
     assert resp.headers["HX-Trigger"] == "refreshStaging"
+
+
+def test_approve_hx_error_returns_message(monkeypatch):
+    def boom():
+        raise RuntimeError("oops")
+
+    monkeypatch.setattr(worker, "approve_all", boom)
+    monkeypatch.setattr(api, "approve_all", boom)
+    req = types.SimpleNamespace(headers={"Hx-Request": "1"})
+    resp = api.approve(req)
+    assert resp.status_code == 500
+    assert "oops" in resp.text
 
 
 def test_approve_non_hx_redirect(monkeypatch):
@@ -247,6 +266,16 @@ def test_staging_template_uses_multipart_encoding():
     with open(path) as fh:
         html = fh.read()
     assert 'hx-encoding="multipart/form-data"' in html
+
+
+def test_staging_template_approve_form_targets_alerts():
+    path = os.path.join(
+        os.path.dirname(__file__), "..", "src", "songripper", "templates", "staging.html"
+    )
+    with open(path) as fh:
+        html = fh.read()
+    assert 'hx-post="/approve"' in html
+    assert 'hx-target="#alerts"' in html
 
 
 def test_staging_template_has_select_all_checkbox():

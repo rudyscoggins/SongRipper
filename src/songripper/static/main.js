@@ -16,6 +16,13 @@ document.addEventListener('DOMContentLoaded', function () {
   syncSelectAll();
 });
 
+document.addEventListener('htmx:responseError', function (evt) {
+  const alerts = document.getElementById('alerts');
+  if (!alerts) return;
+  alerts.innerHTML = evt.detail.xhr.responseText;
+  fadeOutAlerts(alerts);
+});
+
 document.addEventListener('htmx:afterSwap', function (evt) {
   if (evt.target.id === 'alerts') {
     fadeOutAlerts(evt.target);
