@@ -32,7 +32,7 @@
 <form id="multi-edit" hx-post="/edit-multiple" hx-swap="none"
       hx-include="[name=track]:checked"
       hx-on:afterRequest="document.body.dispatchEvent(new Event('refreshStaging'))"
-      enctype="multipart/form-data">
+      enctype="multipart/form-data" hx-encoding="multipart/form-data">
   <fieldset class="edit-fields">
     <div>
       <label><input type="checkbox" name="artist_enable"> Artist</label>

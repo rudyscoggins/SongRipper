@@ -308,6 +308,16 @@ def update_album_art(filepath: str, data: bytes, mime: str = "image/jpeg") -> No
         tags = ID3(path)
     except Exception:
         tags = ID3()
+    # Remove any existing album art to ensure the first APIC frame is the new
+    # artwork.  If we simply assign to ``tags["APIC"]`` mutagen will append a
+    # new frame leaving the old one in place, which causes callers that read the
+    # first APIC frame to continue using the previous image.
+    if hasattr(tags, "delall"):
+        try:
+            tags.delall("APIC")  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
     tags["APIC"] = APIC(
         encoding=3,
         mime=mime or "image/jpeg",
