@@ -148,8 +148,21 @@ def approve_all():
     # Staging may be missing if no playlists were ripped yet
     if not staging_has_files():
         return
-    for p in staging.iterdir():
-        shutil.move(str(p), NAS_PATH / p.name)
+    for p in list(staging.iterdir()):
+        dest_artist = NAS_PATH / p.name
+        if dest_artist.exists():
+            for album in p.iterdir():
+                shutil.move(str(album), dest_artist / album.name)
+            try:
+                p.rmdir()
+            except OSError:
+                pass
+        else:
+            shutil.move(str(p), dest_artist)
+    try:
+        staging.rmdir()
+    except OSError:
+        pass
 
 def delete_staging() -> bool:
     """Delete the staging directory if it contains files.
