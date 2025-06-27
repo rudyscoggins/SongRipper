@@ -224,6 +224,15 @@ def test_staging_template_has_album_art_field():
     assert 'name="art_enable"' in html
 
 
+def test_staging_template_uses_multipart_encoding():
+    path = os.path.join(
+        os.path.dirname(__file__), "..", "src", "songripper", "templates", "staging.html"
+    )
+    with open(path) as fh:
+        html = fh.read()
+    assert 'hx-encoding="multipart/form-data"' in html
+
+
 def test_staging_template_has_select_all_checkbox():
     path = os.path.join(
         os.path.dirname(__file__), "..", "src", "songripper", "templates", "staging.html"
