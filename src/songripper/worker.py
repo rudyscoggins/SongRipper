@@ -1,6 +1,8 @@
 # src/songripper/worker.py
 import subprocess, json, shutil, re
 from pathlib import Path
+import threading
+import concurrent.futures
 
 
 class TrackUpdateError(Exception):
@@ -10,6 +12,9 @@ from .settings import DATA_DIR, NAS_PATH
 from .models import Track
 
 YT_BASE = ["yt-dlp", "--quiet", "--no-warnings"]
+
+# Lock used to protect tagging operations when ripping songs concurrently
+TAG_LOCK = threading.Lock()
 
 def clean(text: str) -> str:
     return re.sub(r'[\\/*?:"<>|]', "_", text).strip()
@@ -62,7 +67,7 @@ def fetch_thumbnail(url: str, requests_mod=None) -> bytes | None:
     except Exception:
         return None
 
-def mp3_from_url(url: str, staging_dir: Path):
+def mp3_from_url(url: str, staging_dir: Path, lock: threading.Lock = TAG_LOCK):
     # 1. get metadata only
     meta = json.loads(subprocess.check_output(
         YT_BASE + ["-J", "--no-playlist", url], text=True))
@@ -92,12 +97,14 @@ def mp3_from_url(url: str, staging_dir: Path):
     except Exception:
         EasyID3 = ID3 = APIC = None  # type: ignore
 
+    cover = None
     if EasyID3 is not None:
-        audio = EasyID3(mp3_path)
-        audio["artist"], audio["title"], audio["album"] = [artist], [title], [album]
-        if prefix:
-            audio["tracknumber"] = [prefix.strip()]
-        audio.save()
+        with lock:
+            audio = EasyID3(mp3_path)
+            audio["artist"], audio["title"], audio["album"] = [artist], [title], [album]
+            if prefix:
+                audio["tracknumber"] = [prefix.strip()]
+            audio.save()
         cover = fetch_cover(artist, title)
         if cover is None:
             thumb_url = meta.get("thumbnail")
@@ -112,15 +119,16 @@ def mp3_from_url(url: str, staging_dir: Path):
             if thumb_url:
                 cover = fetch_thumbnail(thumb_url)
         if cover:
-            tags = ID3(mp3_path)
-            tags["APIC"] = APIC(
-                encoding=3,
-                mime="image/jpeg",
-                type=3,
-                desc=u"Cover",
-                data=cover,
-            )
-            tags.save()
+            with lock:
+                tags = ID3(mp3_path)
+                tags["APIC"] = APIC(
+                    encoding=3,
+                    mime="image/jpeg",
+                    type=3,
+                    desc=u"Cover",
+                    data=cover,
+                )
+                tags.save()
     return artist, album, mp3_path
 
 def rip_playlist(pl_url: str):
@@ -129,12 +137,17 @@ def rip_playlist(pl_url: str):
     # flatten playlist ? list of video URLs
     items = json.loads(subprocess.check_output(
         YT_BASE + ["--flat-playlist", "-J", pl_url], text=True))["entries"]
-    for it in items:
+
+    def rip_item(it):
         url = f"https://youtu.be/{it['id']}"
         artist, album, path = mp3_from_url(url, staging)
         dest = staging / artist / album
         dest.mkdir(parents=True, exist_ok=True)
         shutil.move(str(path), dest / path.name)
+
+    with concurrent.futures.ThreadPoolExecutor() as ex:
+        list(ex.map(rip_item, items))
+
     print("Songs successfully transferred to staging directory")
     return "done"
 
