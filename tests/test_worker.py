@@ -2,6 +2,8 @@ import types
 import os
 import sys
 import json
+import threading
+import time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from songripper import worker
 from songripper.worker import clean, fetch_cover, delete_staging
@@ -97,10 +99,10 @@ def test_rip_playlist_moves_files(monkeypatch, tmp_path):
     dest1 = tmp_path / "staging" / "artist1" / "album1" / "song1.mp3"
     dest2 = tmp_path / "staging" / "artist2" / "album2" / "song2.mp3"
 
-    assert moves == [
+    assert set(moves) == {
         (str(tmp_path / "song1.mp3"), dest1),
         (str(tmp_path / "song2.mp3"), dest2),
-    ]
+    }
     assert result == "done"
 
 
@@ -345,4 +347,25 @@ def test_approve_all_merges_existing_artist(tmp_path):
     assert (worker.NAS_PATH / "Artist" / "NewAlbum" / "track.mp3").exists()
     assert not (worker.NAS_PATH / "Artist" / "Artist").exists()
     assert worker.staging_has_files() is False
+
+
+def test_rip_playlist_runs_in_parallel(monkeypatch, tmp_path):
+    worker.DATA_DIR = tmp_path
+
+    playlist_json = json.dumps({"entries": [{"id": "1"}, {"id": "2"}]})
+    monkeypatch.setattr(worker.subprocess, "check_output", lambda *a, **k: playlist_json)
+
+    thread_ids = []
+
+    def fake_mp3_from_url(url, staging):
+        thread_ids.append(threading.get_ident())
+        time.sleep(0.01)
+        return ("a", "b", tmp_path / f"{url.split('/')[-1]}.mp3")
+
+    monkeypatch.setattr(worker, "mp3_from_url", fake_mp3_from_url)
+    monkeypatch.setattr(worker.shutil, "move", lambda *a, **k: None)
+
+    worker.rip_playlist("http://pl")
+
+    assert len(set(thread_ids)) >= 2
 
