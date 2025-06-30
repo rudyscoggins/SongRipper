@@ -78,6 +78,23 @@ footer {
   display: inline-block;
 }
 
+#list-spinner {
+  display: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ccc;
+  border-top-color: #333;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 1em 0;
+}
+
+#list-spinner.htmx-request {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

@@ -23,7 +23,8 @@
 </form>
 
 <p>Staged files live in <code>./data/staging/</code> until you approve.</p>
-  <div id="staging-list" hx-get="/staging" hx-trigger="load, refreshStaging from:body"></div>
+  <div id="list-spinner" aria-hidden="true"></div>
+  <div id="staging-list" hx-get="/staging" hx-trigger="load, refreshStaging from:body" hx-indicator="#list-spinner"></div>
   <h3>How to Use</h3>
   <ol>
     <li>Paste a YouTube playlist URL in the field above and click <strong>Rip!</strong>.</li>
