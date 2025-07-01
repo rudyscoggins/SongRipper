@@ -18,7 +18,7 @@
 <div id="spinner" aria-hidden="true"></div>
 <form hx-post="/rip" hx-swap="none" hx-indicator="#spinner"
       hx-on:afterRequest="document.body.dispatchEvent(new Event('refreshStaging'))">
-  <input type="text" name="playlist_url" placeholder="https://www.youtube.com/playlist?list=..." required>
+   <input type="text" name="playlist_url" placeholder="https://www.youtube.com/playlist?list=..." required autocomplete="off" autocorrect="off" autocapitalize="off">
   <button type="submit">Rip!</button>
 </form>
 
