@@ -234,7 +234,7 @@ def list_staged_tracks() -> list[Track]:
                         cover=cover_b64,
                     )
                 )
-
+    tracks.sort(key=lambda t: (t.artist.lower(), t.album.lower()))
     return tracks
 
 def read_tags(filepath: str) -> dict[str, str]:
