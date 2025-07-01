@@ -98,6 +98,13 @@ def mp3_from_url(url: str, staging_dir: Path, lock: threading.Lock = TAG_LOCK):
     artist = clean(meta.get("artist") or meta["uploader"])
     title = clean(meta.get("track") or meta["title"])
     album = clean(meta.get("album") or meta.get("playlist") or "Singles")
+
+    if not artist:
+        artist = "Unknown Artist"
+    if not album:
+        album = "Unknown Album"
+    if not title:
+        title = "Unknown Title"
     track_no = meta.get("track_number")
     prefix = ""
     if track_no:
