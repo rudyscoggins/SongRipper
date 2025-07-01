@@ -16,6 +16,11 @@ YT_BASE = ["yt-dlp", "--quiet", "--no-warnings"]
 # Lock used to protect tagging operations when ripping songs concurrently
 TAG_LOCK = threading.Lock()
 
+# Cache used to ensure every album has a single cover fetch
+ALBUM_ART_CACHE: dict[tuple[str, str], bytes | None] = {}
+# Lock protecting access to ``ALBUM_ART_CACHE`` when ripping concurrently
+ALBUM_LOCK = threading.Lock()
+
 EMOJI_RE = re.compile(
     "["
     "\U0001F600-\U0001F64F"  # emoticons
@@ -124,19 +129,25 @@ def mp3_from_url(url: str, staging_dir: Path, lock: threading.Lock = TAG_LOCK):
             if prefix:
                 audio["tracknumber"] = [prefix.strip()]
             audio.save()
-        cover = fetch_cover(artist, title)
+        key = (artist, album)
+        with ALBUM_LOCK:
+            cover = ALBUM_ART_CACHE.get(key)
         if cover is None:
-            thumb_url = meta.get("thumbnail")
-            if thumb_url is None:
-                thumbs = meta.get("thumbnails")
-                if isinstance(thumbs, list) and thumbs:
-                    first = thumbs[0]
-                    if isinstance(first, dict):
-                        thumb_url = first.get("url")
-                    else:
-                        thumb_url = first
-            if thumb_url:
-                cover = fetch_thumbnail(thumb_url)
+            cover = fetch_cover(artist, title)
+            if cover is None:
+                thumb_url = meta.get("thumbnail")
+                if thumb_url is None:
+                    thumbs = meta.get("thumbnails")
+                    if isinstance(thumbs, list) and thumbs:
+                        first = thumbs[0]
+                        if isinstance(first, dict):
+                            thumb_url = first.get("url")
+                        else:
+                            thumb_url = first
+                if thumb_url:
+                    cover = fetch_thumbnail(thumb_url)
+            with ALBUM_LOCK:
+                ALBUM_ART_CACHE[key] = cover
         if cover:
             with lock:
                 tags = ID3(mp3_path)
@@ -153,6 +164,9 @@ def mp3_from_url(url: str, staging_dir: Path, lock: threading.Lock = TAG_LOCK):
 def rip_playlist(pl_url: str):
     staging = DATA_DIR / "staging"
     staging.mkdir(parents=True, exist_ok=True)
+    # Clear album art cache before ripping a new playlist
+    with ALBUM_LOCK:
+        ALBUM_ART_CACHE.clear()
     # flatten playlist ? list of video URLs
     items = json.loads(subprocess.check_output(
         YT_BASE + ["--flat-playlist", "-J", pl_url], text=True))["entries"]
@@ -364,11 +378,11 @@ def update_track(filepath: str, field: str, value: str) -> Path:
 
 
 def update_album_art(filepath: str, data: bytes, mime: str = "image/jpeg") -> None:
-    """Replace the album art of ``filepath`` with ``data``.
+    """Replace the album art of ``filepath`` and all tracks in the same album.
 
     This is a no-op when tag parsing dependencies are missing.  A
     :class:`TrackUpdateError` is raised if the file does not exist or the
-    artwork cannot be written.
+    artwork cannot be written to any track.
     """
     path = Path(filepath)
     if not path.exists():
@@ -377,28 +391,35 @@ def update_album_art(filepath: str, data: bytes, mime: str = "image/jpeg") -> No
         from mutagen.id3 import ID3, APIC
     except Exception:
         return
-    try:
-        tags = ID3(path)
-    except Exception:
-        tags = ID3()
-    # Remove any existing album art to ensure the first APIC frame is the new
-    # artwork.  If we simply assign to ``tags["APIC"]`` mutagen will append a
-    # new frame leaving the old one in place, which causes callers that read the
-    # first APIC frame to continue using the previous image.
-    if hasattr(tags, "delall"):
-        try:
-            tags.delall("APIC")  # type: ignore[attr-defined]
-        except Exception:
-            pass
 
-    tags["APIC"] = APIC(
-        encoding=3,
-        mime=mime or "image/jpeg",
-        type=3,
-        desc="Cover",
-        data=data,
-    )
-    try:
-        tags.save(path)
-    except Exception as e:  # pragma: no cover - unexpected failure
-        raise TrackUpdateError(str(e))
+    tags_info = read_tags(filepath)
+    key = (tags_info["artist"], tags_info["album"])
+
+    def write_art(mp3: Path) -> None:
+        try:
+            tags = ID3(mp3)
+        except Exception:
+            tags = ID3()
+        if hasattr(tags, "delall"):
+            try:
+                tags.delall("APIC")  # type: ignore[attr-defined]
+            except Exception:
+                pass
+
+        tags["APIC"] = APIC(
+            encoding=3,
+            mime=mime or "image/jpeg",
+            type=3,
+            desc="Cover",
+            data=data,
+        )
+        try:
+            tags.save(mp3)
+        except Exception as e:  # pragma: no cover - unexpected failure
+            raise TrackUpdateError(str(e))
+
+    for mp3 in path.parent.glob("*.mp3"):
+        write_art(mp3)
+
+    with ALBUM_LOCK:
+        ALBUM_ART_CACHE[key] = data
