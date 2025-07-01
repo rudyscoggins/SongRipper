@@ -4,6 +4,7 @@ import sys
 import json
 import threading
 import time
+from pathlib import Path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from songripper import worker
 from songripper.worker import clean, fetch_cover, delete_staging
@@ -327,6 +328,50 @@ def test_update_album_art_replaces_existing(monkeypatch, tmp_path):
     assert id3_instance.deleted
     assert isinstance(id3_instance["APIC"], DummyAPIC)
     assert id3_instance.saved == mp3
+
+
+def test_update_album_art_updates_all_album_tracks(monkeypatch, tmp_path):
+    album_dir = tmp_path / "Artist" / "Album"
+    album_dir.mkdir(parents=True)
+    t1 = album_dir / "t1.mp3"
+    t2 = album_dir / "t2.mp3"
+    t1.write_text("x")
+    t2.write_text("y")
+
+    id3_objects = []
+
+    class DummyID3(dict):
+        def __init__(self, path=None):
+            self.path = path
+
+        def save(self, path=None):
+            self.saved = path
+
+        def delall(self, key):
+            pass
+
+    class DummyAPIC:
+        def __init__(self, **kw):
+            self.kw = kw
+            id3_objects.append((kw.get("data"), self))
+
+    def id3_factory(p=None):
+        obj = DummyID3(p)
+        return obj
+
+    monkeypatch.setitem(
+        sys.modules,
+        "mutagen.id3",
+        types.SimpleNamespace(ID3=id3_factory, APIC=DummyAPIC),
+    )
+
+    worker.ALBUM_ART_CACHE.clear()
+    worker.update_album_art(str(t1), b"img", "image/png")
+
+    assert len(id3_objects) == 2
+    assert all(obj[0] == b"img" for obj in id3_objects)
+    with worker.ALBUM_LOCK:
+        assert worker.ALBUM_ART_CACHE[("Artist", "Album")] == b"img"
 
 
 def test_update_album_art_missing_file_raises(tmp_path):
