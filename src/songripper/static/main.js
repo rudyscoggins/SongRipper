@@ -39,10 +39,14 @@ document.addEventListener('htmx:afterSwap', function (evt) {
 
 
 function updateApprovalButton() {
-  const btn = document.getElementById('approve-btn');
-  if (!btn) return;
+  const btnAll = document.getElementById('approve-btn');
+  const btnSel = document.getElementById('approve-selected-btn');
   const hasTracks = document.querySelector('#staging-list tbody tr') !== null;
-  btn.disabled = !hasTracks;
+  if (btnAll) btnAll.disabled = !hasTracks;
+  if (btnSel) {
+    const anyChecked = document.querySelector('#staging-list input[name=track]:checked') !== null;
+    btnSel.disabled = !anyChecked;
+  }
 }
 
 function fillMultiEditFromCell(e) {
@@ -62,6 +66,7 @@ function fillMultiEditFromCell(e) {
     if (trackBox && !trackBox.checked) {
       trackBox.checked = true;
       syncSelectAll();
+      updateApprovalButton();
     }
   }
 }
@@ -84,5 +89,8 @@ document.addEventListener('change', function (e) {
     toggleAllTracks(e.target.checked);
   } else if (e.target.matches('#staging-list input[name=track]')) {
     syncSelectAll();
+  }
+  if (e.target.id === 'select-all' || e.target.matches('#staging-list input[name=track]')) {
+    updateApprovalButton();
   }
 });

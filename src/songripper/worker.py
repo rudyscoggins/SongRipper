@@ -177,6 +177,34 @@ def approve_all():
     except OSError:
         pass
 
+def approve_selected(paths: list[str]) -> None:
+    """Move selected tracks from staging to ``NAS_PATH``.
+
+    ``paths`` should be absolute file paths inside the staging directory.
+    Directories made empty by moving files are removed.
+    """
+    staging_root = DATA_DIR / "staging"
+    if not paths:
+        return
+    for track in paths:
+        src = Path(track)
+        if not src.exists():
+            continue
+        dest_dir = NAS_PATH / src.parents[1].name / src.parent.name
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(src), dest_dir / src.name)
+        parent = src.parent
+        while parent != staging_root:
+            try:
+                parent.rmdir()
+            except OSError:
+                break
+            parent = parent.parent
+    try:
+        staging_root.rmdir()
+    except OSError:
+        pass
+
 def delete_staging() -> bool:
     """Delete the staging directory if it contains files.
 
