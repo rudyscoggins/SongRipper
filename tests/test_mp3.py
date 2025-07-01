@@ -155,3 +155,71 @@ def test_mp3_from_url_uses_cached_cover(tmp_path, monkeypatch):
     mp3_from_url("http://x", tmp_path)
 
     assert len(cover_calls) == 1
+
+
+def test_mp3_from_url_fallback_values(tmp_path, monkeypatch):
+    meta = {
+        "artist": "\U0001F600",
+        "track": "\U0001F3B5",
+        "album": "\U0001F3B6",
+        "uploader": "Uploader",
+        "title": "T",
+        "playlist": "List",
+    }
+
+    def fake_check_output(cmd, text=True):
+        return json.dumps(meta)
+
+    run_calls = []
+
+    def fake_run(cmd, check=False):
+        run_calls.append((cmd, check))
+
+    monkeypatch.setattr(subprocess, "check_output", fake_check_output)
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(worker, "fetch_cover", lambda *a, **k: None)
+
+    class DummyEasyID3(dict):
+        def __init__(self, path):
+            self.path = path
+
+        def save(self):
+            pass
+
+    class DummyID3(dict):
+        def __init__(self, path):
+            self.path = path
+
+        def save(self):
+            pass
+
+    class DummyAPIC:
+        def __init__(self, **kw):
+            self.kw = kw
+
+    monkeypatch.setitem(
+        sys.modules,
+        "mutagen.easyid3",
+        types.SimpleNamespace(EasyID3=DummyEasyID3),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "mutagen.id3",
+        types.SimpleNamespace(ID3=DummyID3, APIC=DummyAPIC),
+    )
+
+    artist, album, path = mp3_from_url("http://x", tmp_path)
+
+    assert artist == "Unknown Artist"
+    assert album == "Unknown Album"
+    assert path == tmp_path / "Unknown Title.mp3"
+
+    expected_out = worker.YT_BASE + [
+        "-x",
+        "--audio-format",
+        "mp3",
+        "-o",
+        str(tmp_path / "Unknown Title.%(ext)s"),
+        "http://x",
+    ]
+    assert run_calls == [(expected_out, True)]
