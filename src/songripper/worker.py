@@ -16,8 +16,27 @@ YT_BASE = ["yt-dlp", "--quiet", "--no-warnings"]
 # Lock used to protect tagging operations when ripping songs concurrently
 TAG_LOCK = threading.Lock()
 
+EMOJI_RE = re.compile(
+    "["
+    "\U0001F600-\U0001F64F"  # emoticons
+    "\U0001F300-\U0001F5FF"  # symbols & pictographs
+    "\U0001F680-\U0001F6FF"  # transport & map symbols
+    "\U0001F1E0-\U0001F1FF"  # flags
+    "\U00002700-\U000027BF"  # dingbats
+    "\U0001F900-\U0001F9FF"  # supplemental symbols
+    "\U0001FA70-\U0001FAFF"  # symbols & pictographs extended-A
+    "\U00002600-\U000026FF"  # misc symbols
+    "\U000024C2-\U0001F251"  # enclosed characters
+    "]",
+    flags=re.UNICODE,
+)
+
 def clean(text: str) -> str:
-    return re.sub(r'[\\/*?:"<>|]', "_", text).strip()
+    """Return ``text`` safe for use in file paths."""
+    text = re.sub(r'[\\/*?:"<>|]', " ", text)
+    text = EMOJI_RE.sub(" ", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
 
 def fetch_cover(artist: str, title: str, requests_mod=None) -> bytes | None:
     """Return album art from iTunes if available.

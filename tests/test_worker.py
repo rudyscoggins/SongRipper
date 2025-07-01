@@ -10,9 +10,14 @@ from songripper.worker import clean, fetch_cover, delete_staging
 import pytest
 
 
-def test_clean_removes_forbidden_chars():
+def test_clean_replaces_forbidden_chars_with_space():
     text = 'A/B:C*D?E"F<G>H|I'
-    assert clean(text) == 'A_B_C_D_E_F_G_H_I'
+    assert clean(text) == 'A B C D E F G H I'
+
+
+def test_clean_removes_emojis_and_collapses_space():
+    text = 'Hello\U0001F600 World \U0001F3B5'
+    assert clean(text) == 'Hello World'
 
 
 def test_fetch_cover_uses_requests_module():
