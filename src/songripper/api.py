@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from .worker import (
     rip_playlist,
     approve_all,
+    approve_selected as worker_approve_selected,
     delete_staging,
     staging_has_files,
     list_staged_tracks,
@@ -49,6 +50,20 @@ def rip(request: Request, playlist_url: str = Form(...)):
 def approve(request: Request):
     try:
         approve_all()
+    except Exception as exc:
+        if request.headers.get("Hx-Request"):
+            context = {"request": request, "message": str(exc)}
+            return templates.TemplateResponse("message.html", context, status_code=500)
+        raise HTTPException(status_code=500, detail=str(exc))
+    if request.headers.get("Hx-Request"):
+        return HTMLResponse("", status_code=204, headers={"HX-Trigger": "refreshStaging"})
+    return RedirectResponse("/", status_code=303)
+
+
+@app.post("/approve-selected")
+def approve_selected(request: Request, track: list[str] = Form([])):
+    try:
+        worker_approve_selected(track)
     except Exception as exc:
         if request.headers.get("Hx-Request"):
             context = {"request": request, "message": str(exc)}

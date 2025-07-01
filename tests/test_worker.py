@@ -350,6 +350,28 @@ def test_approve_all_merges_existing_artist(tmp_path):
     assert worker.staging_has_files() is False
 
 
+def test_approve_selected_moves_only_specified(tmp_path):
+    worker.DATA_DIR = tmp_path
+    worker.NAS_PATH = tmp_path / "nas"
+
+    staging_album = tmp_path / "staging" / "Artist" / "Album"
+    staging_album.mkdir(parents=True)
+    t1 = staging_album / "t1.mp3"
+    t2 = staging_album / "t2.mp3"
+    t1.write_text("x")
+    t2.write_text("y")
+
+    worker.approve_selected([str(t1)])
+
+    assert (worker.NAS_PATH / "Artist" / "Album" / "t1.mp3").exists()
+    assert t2.exists()
+    assert (worker.NAS_PATH / "Artist" / "Album" / "t2.mp3").exists() is False
+    assert worker.staging_has_files() is True
+
+    worker.approve_selected([str(t2)])
+    assert not (tmp_path / "staging").exists()
+
+
 def test_rip_playlist_runs_in_parallel(monkeypatch, tmp_path):
     worker.DATA_DIR = tmp_path
 

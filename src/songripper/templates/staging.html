@@ -58,6 +58,10 @@
   <form hx-post="/approve" hx-target="#alerts" hx-swap="innerHTML">
     <button id="approve-btn" type="submit"{% if not tracks %} disabled{% endif %}>Approve & Move All</button>
   </form>
+  <form hx-post="/approve-selected" hx-target="#alerts" hx-swap="innerHTML"
+        hx-include="[name=track]:checked">
+    <button id="approve-selected-btn" type="submit"{% if not tracks %} disabled{% endif %}>Approve & Move Selected</button>
+  </form>
   <form hx-post="/delete" hx-target="#alerts" hx-swap="innerHTML">
     <button type="submit">Unapprove and Delete Staging</button>
   </form>

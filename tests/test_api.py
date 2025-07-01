@@ -64,6 +64,43 @@ def test_approve_non_hx_redirect(monkeypatch):
     assert resp.headers["location"] == "/"
 
 
+def test_approve_selected_hx_triggers_refresh(monkeypatch):
+    monkeypatch.setattr(worker, "approve_selected", lambda tracks: None)
+    monkeypatch.setattr(api, "worker_approve_selected", worker.approve_selected)
+    resp = client.post(
+        "/approve-selected",
+        data=[("track", "a.mp3"), ("track", "b.mp3")],
+        headers={"Hx-Request": "1"},
+    )
+    assert resp.status_code == 204
+    assert resp.headers["HX-Trigger"] == "refreshStaging"
+
+
+def test_approve_selected_hx_error_returns_message(monkeypatch):
+    def boom(tracks=None):
+        raise RuntimeError("oops")
+
+    monkeypatch.setattr(worker, "approve_selected", boom)
+    monkeypatch.setattr(api, "worker_approve_selected", boom)
+    resp = client.post(
+        "/approve-selected",
+        data=[("track", "a.mp3")],
+        headers={"Hx-Request": "1"},
+    )
+    assert resp.status_code == 500
+    assert "oops" in resp.text
+
+
+def test_approve_selected_non_hx_redirect(monkeypatch):
+    monkeypatch.setattr(worker, "approve_selected", lambda tracks: None)
+    resp = client.post(
+        "/approve-selected",
+        data=[("track", "a.mp3")],
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/"
+
+
 def test_rip_form_has_afterrequest_handler():
     template_path = os.path.join(os.path.dirname(__file__), "..", "src", "songripper", "templates", "index.html")
     with open(template_path) as fh:
@@ -204,6 +241,7 @@ def test_staging_template_approve_form_targets_alerts():
     with open(path) as fh:
         html = fh.read()
     assert 'hx-post="/approve"' in html
+    assert 'hx-post="/approve-selected"' in html
     assert 'hx-target="#alerts"' in html
 
 
