@@ -40,8 +40,8 @@ def home(req: Request, msg: str | None = None):
     return templates.TemplateResponse("index.html", context)
 
 @app.post("/rip")
-def rip(request: Request, playlist_url: str = Form(...)):
-    rip_playlist(playlist_url)
+def rip(request: Request, youtube_url: str = Form(...)):
+    rip_playlist(youtube_url)
     if request.headers.get("Hx-Request"):
         return HTMLResponse("", status_code=204, headers={"HX-Trigger": "refreshStaging"})
     return RedirectResponse("/", status_code=303)

@@ -14,11 +14,11 @@
   <p id="message">{{ message }}</p>
 {% endif %}
 </div>
-<h2>Rip YouTube Playlist</h2>
+<h2>Rip YouTube</h2>
 <div id="spinner" aria-hidden="true"></div>
 <form hx-post="/rip" hx-swap="none" hx-indicator="#spinner"
       hx-on:afterRequest="document.body.dispatchEvent(new Event('refreshStaging'))">
-   <input type="text" name="playlist_url" placeholder="https://www.youtube.com/playlist?list=..." required autocomplete="off" autocorrect="off" autocapitalize="off">
+   <input type="text" name="youtube_url" placeholder="https://www.youtube.com/watch?v=..." required autocomplete="off" autocorrect="off" autocapitalize="off">
   <button type="submit">Rip!</button>
 </form>
 
@@ -27,7 +27,7 @@
   <div id="staging-list" hx-get="/staging" hx-trigger="load, refreshStaging from:body" hx-indicator="#list-spinner"></div>
   <h3>How to Use</h3>
   <ol>
-    <li>Paste a YouTube playlist URL in the field above and click <strong>Rip!</strong>.</li>
+    <li>Paste a YouTube playlist or video URL in the field above and click <strong>Rip!</strong>.</li>
     <li>After ripping, review the staged tracks listed above.</li>
     <li>Tap any artist, album or title value to send it to the edit fields for bulk changes.</li>
     <li>Press <strong>Approve &amp; Move All</strong> to move the tracks into your library or

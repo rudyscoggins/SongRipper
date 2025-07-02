@@ -171,22 +171,32 @@ def mp3_from_url(url: str, staging_dir: Path, lock: threading.Lock = TAG_LOCK):
 def rip_playlist(pl_url: str):
     staging = DATA_DIR / "staging"
     staging.mkdir(parents=True, exist_ok=True)
-    # Clear album art cache before ripping a new playlist
+    # Clear album art cache before ripping a new playlist or video
     with ALBUM_LOCK:
         ALBUM_ART_CACHE.clear()
-    # flatten playlist ? list of video URLs
-    items = json.loads(subprocess.check_output(
-        YT_BASE + ["--flat-playlist", "-J", pl_url], text=True))["entries"]
 
-    def rip_item(it):
-        url = f"https://youtu.be/{it['id']}"
+    info = json.loads(
+        subprocess.check_output(
+            YT_BASE + ["--flat-playlist", "-J", pl_url], text=True
+        )
+    )
+    items = info.get("entries")
+
+    def rip_item(url: str):
         artist, album, path = mp3_from_url(url, staging)
         dest = staging / artist / album
         dest.mkdir(parents=True, exist_ok=True)
         shutil.move(str(path), dest / path.name)
 
-    with concurrent.futures.ThreadPoolExecutor() as ex:
-        list(ex.map(rip_item, items))
+    if items:
+        def to_url(it):
+            vid = it.get("id") if isinstance(it, dict) else str(it)
+            return f"https://youtu.be/{vid}"
+
+        with concurrent.futures.ThreadPoolExecutor() as ex:
+            list(ex.map(lambda it: rip_item(to_url(it)), items))
+    else:
+        rip_item(pl_url)
 
     print("Songs successfully transferred to staging directory")
     return "done"

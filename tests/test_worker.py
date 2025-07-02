@@ -112,6 +112,29 @@ def test_rip_playlist_moves_files(monkeypatch, tmp_path):
     assert result == "done"
 
 
+def test_rip_playlist_accepts_video_url(monkeypatch, tmp_path):
+    worker.DATA_DIR = tmp_path
+
+    video_json = json.dumps({"id": "x"})
+
+    monkeypatch.setattr(
+        worker.subprocess, "check_output", lambda *a, **k: video_json
+    )
+
+    monkeypatch.setattr(
+        worker, "mp3_from_url", lambda url, staging: ("a", "b", tmp_path / "s.mp3")
+    )
+
+    moves = []
+    monkeypatch.setattr(worker.shutil, "move", lambda s, d: moves.append((s, d)))
+
+    result = worker.rip_playlist("http://vid")
+
+    dest = tmp_path / "staging" / "a" / "b" / "s.mp3"
+    assert moves == [(str(tmp_path / "s.mp3"), dest)]
+    assert result == "done"
+
+
 def test_staging_has_files(tmp_path):
     worker.DATA_DIR = tmp_path
     # No staging dir -> False

@@ -1,6 +1,6 @@
 # SongRipper
 
-SongRipper is a small FastAPI service that converts YouTube playlists into tagged MP3 files.
+SongRipper is a small FastAPI service that converts YouTube playlists or single videos into tagged MP3 files.
 It downloads each video, extracts the audio, fetches metadata such as artist, title and album
 information and writes ID3 tags with cover art.  Tracks are placed in a staging directory until
 approved, after which they are moved to the final music library.
@@ -15,7 +15,7 @@ music collection.
 docker compose up --build
 ```
 
-The web UI allows you to submit a YouTube playlist URL, approve all staged tracks
+The web UI allows you to submit a YouTube playlist or video URL, approve all staged tracks
 or delete the staging area.
 
 ## Environment Variables
