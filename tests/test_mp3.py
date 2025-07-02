@@ -61,6 +61,8 @@ def test_mp3_from_url(tmp_path, monkeypatch):
     monkeypatch.setattr(subprocess, "check_output", fake_check_output)
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(worker, "fetch_cover", fake_fetch_cover)
+    monkeypatch.setattr(worker, "fetch_track_info", lambda *a, **k: None)
+    monkeypatch.setattr(worker, "fetch_track_number", lambda *a, **k: None)
     monkeypatch.setitem(
         sys.modules,
         "mutagen.easyid3",
@@ -111,7 +113,7 @@ def test_mp3_from_url_uses_cached_cover(tmp_path, monkeypatch):
 
     monkeypatch.setattr(subprocess, "check_output", fake_check_output)
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: None)
-
+    
     cover_calls = []
 
     def fake_fetch_cover(a, t):
@@ -119,6 +121,8 @@ def test_mp3_from_url_uses_cached_cover(tmp_path, monkeypatch):
         return b"img"
 
     monkeypatch.setattr(worker, "fetch_cover", fake_fetch_cover)
+    monkeypatch.setattr(worker, "fetch_track_info", lambda *a, **k: None)
+    monkeypatch.setattr(worker, "fetch_track_number", lambda *a, **k: None)
 
     class DummyEasyID3(dict):
         def __init__(self, path):
@@ -178,6 +182,8 @@ def test_mp3_from_url_fallback_values(tmp_path, monkeypatch):
     monkeypatch.setattr(subprocess, "check_output", fake_check_output)
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(worker, "fetch_cover", lambda *a, **k: None)
+    monkeypatch.setattr(worker, "fetch_track_info", lambda *a, **k: None)
+    monkeypatch.setattr(worker, "fetch_track_number", lambda *a, **k: None)
 
     class DummyEasyID3(dict):
         def __init__(self, path):
@@ -223,3 +229,99 @@ def test_mp3_from_url_fallback_values(tmp_path, monkeypatch):
         "http://x",
     ]
     assert run_calls == [(expected_out, True)]
+
+
+def test_fetch_track_info(monkeypatch):
+    calls = []
+
+    def fake_get(url, params=None, timeout=None, headers=None):
+        calls.append((url, params))
+
+        class Resp:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                if params and "query" in params:
+                    return {
+                        "releases": [
+                            {
+                                "id": "r1",
+                                "title": "Album",
+                                "artist-credit": [{"name": "Artist"}],
+                            }
+                        ]
+                    }
+                return {
+                    "media": [
+                        {
+                            "tracks": [
+                                {
+                                    "title": "Title",
+                                    "number": "5",
+                                    "artist-credit": [{"name": "Artist"}],
+                                }
+                            ]
+                        }
+                    ]
+                }
+
+        return Resp()
+
+    fake_requests = types.SimpleNamespace(get=fake_get)
+    info = worker.fetch_track_info("Artist", "Album", "Title", fake_requests)
+    assert info == ("Artist", "Album", "Title", 5)
+    assert calls[0][0].startswith("https://musicbrainz.org/ws/2/release/")
+
+
+def test_mp3_from_url_uses_musicbrainz_when_missing_track(tmp_path, monkeypatch):
+    meta = {
+        "artist": "Artist",
+        "track": "Title",
+        "album": "Album",
+        "uploader": "Uploader",
+        "title": "Title",
+        "playlist": "List",
+    }
+
+    monkeypatch.setattr(subprocess, "check_output", lambda *a, **k: json.dumps(meta))
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: None)
+    monkeypatch.setattr(worker, "fetch_cover", lambda *a, **k: None)
+    monkeypatch.setattr(worker, "fetch_track_info", lambda a, b, c: ("MB Artist", "MB Album", "MB Title", 3))
+    monkeypatch.setattr(worker, "fetch_track_number", lambda *a, **k: None)
+
+    class DummyEasyID3(dict):
+        def __init__(self, path):
+            self.path = path
+
+        def save(self):
+            pass
+
+    class DummyID3(dict):
+        def __init__(self, path):
+            self.path = path
+
+        def save(self):
+            pass
+
+    class DummyAPIC:
+        def __init__(self, **kw):
+            self.kw = kw
+
+    monkeypatch.setitem(
+        sys.modules,
+        "mutagen.easyid3",
+        types.SimpleNamespace(EasyID3=DummyEasyID3),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "mutagen.id3",
+        types.SimpleNamespace(ID3=DummyID3, APIC=DummyAPIC),
+    )
+
+    artist, album, path = mp3_from_url("http://x", tmp_path)
+
+    assert artist == "MB Artist"
+    assert album == "MB Album"
+    assert path == tmp_path / "03 MB Title.mp3"
+

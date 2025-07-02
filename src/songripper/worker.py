@@ -91,6 +91,98 @@ def fetch_thumbnail(url: str, requests_mod=None) -> bytes | None:
     except Exception:
         return None
 
+
+def fetch_track_info(
+    artist: str, album: str, title: str, requests_mod=None
+) -> tuple[str, str, str, int | None] | None:
+    """Return official metadata from MusicBrainz if available.
+
+    This function queries the MusicBrainz API for ``artist`` and ``album`` and
+    then searches the release's track list for ``title``.  If found, the
+    official artist name, album title, track title and number are returned.  Any
+    network or parsing error simply results in ``None``.  ``requests_mod`` is
+    injectable for tests.
+    """
+    try:
+        if requests_mod is None:
+            try:
+                import requests as requests_mod  # type: ignore
+            except Exception:
+                return None
+
+        q = f'artist:"{artist}" AND release:"{album}"'
+        res = requests_mod.get(
+            "https://musicbrainz.org/ws/2/release/",
+            params={"query": q, "fmt": "json", "limit": 1},
+            timeout=10,
+            headers={"User-Agent": "SongRipper"},
+        )
+        res.raise_for_status()
+        search = res.json()
+        releases = search.get("releases")
+        if not releases:
+            return None
+        first = releases[0]
+        rel_id = first["id"]
+        off_album = first.get("title", album)
+        off_artist = (
+            first.get("artist-credit", [{}])[0].get("name")
+            if isinstance(first.get("artist-credit"), list)
+            else artist
+        ) or artist
+
+        res = requests_mod.get(
+            f"https://musicbrainz.org/ws/2/release/{rel_id}",
+            params={"inc": "recordings", "fmt": "json"},
+            timeout=10,
+            headers={"User-Agent": "SongRipper"},
+        )
+        res.raise_for_status()
+        release = res.json()
+        for medium in release.get("media", []):
+            for track in medium.get("tracks", []):
+                t_title = track.get("title") or track.get("recording", {}).get("title")
+                if t_title and t_title.lower() == title.lower():
+                    t_num = track.get("number") or track.get("position")
+                    num: int | None = None
+                    if t_num:
+                        try:
+                            num = int(str(t_num).split("/", 1)[0])
+                        except ValueError:
+                            num = None
+                    t_artist = (
+                        track.get("artist-credit", [{}])[0].get("name")
+                        if isinstance(track.get("artist-credit"), list)
+                        else None
+                    )
+                    if not t_artist:
+                        t_artist = (
+                            track.get("recording", {})
+                            .get("artist-credit", [{}])[0]
+                            .get("name")
+                            if isinstance(track.get("recording", {}).get("artist-credit"), list)
+                            else None
+                        )
+                    return (
+                        t_artist or off_artist,
+                        off_album,
+                        t_title,
+                        num,
+                    )
+        return None
+    except Exception:
+        return None
+
+
+def fetch_track_number(
+    artist: str, album: str, title: str, requests_mod=None
+) -> int | None:
+    """Return the track number from MusicBrainz if available."""
+    info = fetch_track_info(artist, album, title, requests_mod)
+    if info:
+        return info[3]
+    return None
+
 def mp3_from_url(url: str, staging_dir: Path, lock: threading.Lock = TAG_LOCK):
     # 1. get metadata only
     meta = json.loads(subprocess.check_output(
@@ -105,14 +197,30 @@ def mp3_from_url(url: str, staging_dir: Path, lock: threading.Lock = TAG_LOCK):
         album = "Unknown Album"
     if not title:
         title = "Unknown Title"
+
     track_no = meta.get("track_number")
+
+    info = fetch_track_info(artist, album, title)
+    if info:
+        artist = clean(info[0])
+        album = clean(info[1])
+        title = clean(info[2])
+        if info[3] is not None:
+            track_no = info[3]
+
     prefix = ""
+    num = None
     if track_no:
         try:
             num = int(str(track_no).split("/", 1)[0])
             prefix = f"{num:02d} "
         except ValueError:
-            prefix = ""
+            track_no = None
+
+    if track_no is None and not info:
+        num = fetch_track_number(artist, album, title)
+        if num is not None:
+            prefix = f"{num:02d} "
 
     # 2. download + convert to MP3
     outtmpl = str(staging_dir / f"{prefix}{title}.%(ext)s")
