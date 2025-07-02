@@ -144,6 +144,29 @@ class RipperService:
         )
         mp3_path = staging_dir / f"{prefix}{title}.mp3"
 
+        # Trim any long silence (>5s) at the start or end of the track.
+        tmp_trim = mp3_path.with_name(mp3_path.stem + "_trim.mp3")
+        trim_cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(mp3_path),
+            "-af",
+            (
+                "silenceremove="
+                "start_periods=1:start_duration=5:start_threshold=-50dB:"\
+                "stop_periods=1:stop_duration=5:stop_threshold=-50dB"
+            ),
+            str(tmp_trim),
+        ]
+        try:
+            subprocess_mod.run(trim_cmd, check=True)
+            mp3_path.unlink()
+            tmp_trim.rename(mp3_path)
+        except Exception:
+            if tmp_trim.exists():
+                tmp_trim.unlink()
+
         try:
             from mutagen.easyid3 import EasyID3
             from mutagen.id3 import ID3, APIC
