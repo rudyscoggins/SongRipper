@@ -91,6 +91,46 @@ def fetch_thumbnail(url: str, requests_mod=None) -> bytes | None:
     except Exception:
         return None
 
+
+def search_album_art(artist: str, album: str, limit: int = 5, requests_mod=None) -> list[str]:
+    """Return possible cover art URLs from the iTunes API."""
+    try:
+        if requests_mod is None:
+            try:
+                import requests as requests_mod  # type: ignore
+            except Exception:
+                return []
+        res = requests_mod.get(
+            "https://itunes.apple.com/search",
+            params={"term": f"{artist} {album}", "entity": "album", "limit": limit},
+            timeout=10,
+        )
+        res.raise_for_status()
+        q = res.json()
+        urls: list[str] = []
+        for it in q.get("results", []):
+            url = it.get("artworkUrl100")
+            if url:
+                urls.append(url.replace("100x100bb", "600x600bb"))
+        return urls
+    except Exception:
+        return []
+
+
+def download_image(url: str, requests_mod=None) -> bytes | None:
+    """Download an image and return its bytes."""
+    try:
+        if requests_mod is None:
+            try:
+                import requests as requests_mod  # type: ignore
+            except Exception:
+                return None
+        res = requests_mod.get(url, timeout=10)
+        res.raise_for_status()
+        return res.content
+    except Exception:
+        return None
+
 def mp3_from_url(url: str, staging_dir: Path, lock: threading.Lock = TAG_LOCK):
     # 1. get metadata only
     meta = json.loads(subprocess.check_output(
