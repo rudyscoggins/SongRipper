@@ -170,3 +170,36 @@ def edit_multiple(
         resp.headers["HX-Trigger"] = "refreshStaging"
         return resp
     return RedirectResponse("/", status_code=303)
+
+
+@app.get("/search-art", response_class=HTMLResponse)
+def search_art(artist: str, album: str, filepath: str):
+    urls = worker.search_album_art(artist, album)
+    html = ""
+    for url in urls:
+        html += (
+            "<form class='art-choice' hx-post=\"/apply-art\" hx-swap=\"none\" hx-target=\"#alerts\">"
+            f"<input type='hidden' name='filepath' value='{filepath}'>"
+            f"<input type='hidden' name='url' value='{url}'>"
+            f"<button type='submit'><img src='{url}' alt='cover'></button>"
+            "</form>"
+        )
+    if not html:
+        html = "<p>No album art found</p>"
+    return HTMLResponse(html)
+
+
+@app.post("/apply-art")
+def apply_art(request: Request, filepath: str = Form(...), url: str = Form(...)):
+    art = worker.download_image(url)
+    if not art:
+        raise HTTPException(status_code=400, detail="Failed to download image")
+    try:
+        worker.update_album_art(filepath, art)
+    except TrackUpdateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if request.headers.get("Hx-Request"):
+        resp = HTMLResponse("", status_code=204)
+        resp.headers["HX-Trigger"] = "refreshStaging"
+        return resp
+    return RedirectResponse("/staging", status_code=303)

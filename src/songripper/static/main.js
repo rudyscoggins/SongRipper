@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
   fadeOutAlerts(alerts);
   updateApprovalButton();
   document.body.addEventListener('click', fillMultiEditFromCell);
+  document.body.addEventListener('click', handleAlbumArtClick);
   syncSelectAll();
 });
 
@@ -69,6 +70,28 @@ function fillMultiEditFromCell(e) {
       updateApprovalButton();
     }
   }
+}
+
+function handleAlbumArtClick(e) {
+  const img = e.target.closest('.album-art');
+  if (!img) return;
+  const row = img.closest('tr');
+  if (!row) return;
+  const form = document.getElementById('multi-edit');
+  if (!form) return;
+  const section = document.getElementById('online-art');
+  if (section) section.hidden = false;
+  const artistField = form.querySelector('#online-art input[name="artist"]');
+  const albumField = form.querySelector('#online-art input[name="album"]');
+  const fileField = form.querySelector('#online-art input[name="filepath"]');
+  if (artistField) artistField.value = row.dataset.artist || '';
+  if (albumField) albumField.value = row.dataset.album || '';
+  if (fileField) fileField.value = row.dataset.filepath || '';
+  const title = form.querySelector('#album-title');
+  if (title) title.textContent = row.dataset.album || '';
+  const artEnable = form.querySelector('input[name="art_enable"]');
+  if (artEnable) artEnable.checked = true;
+  form.scrollIntoView({behavior: 'smooth'});
 }
 
 function toggleAllTracks(checked) {

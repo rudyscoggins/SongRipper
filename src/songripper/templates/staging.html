@@ -12,7 +12,7 @@
   </thead>
   <tbody>
   {% for track in tracks %}
-    <tr>
+    <tr data-filepath="{{ track.filepath }}" data-artist="{{ track.artist }}" data-album="{{ track.album }}">
       <td><input type="checkbox" name="track" value="{{ track.filepath }}"></td>
       <td>
         {% if track.cover %}
@@ -47,6 +47,14 @@
       <label><input type="checkbox" name="art_enable"> Album Art</label>
       <input type="file" name="art_file" accept="image/*"></div>
   </fieldset>
+  <div id="online-art" hidden>
+    <p id="album-title"></p>
+    <input type="hidden" name="artist">
+    <input type="hidden" name="album">
+    <input type="hidden" name="filepath">
+    <button type="button" id="look-online-btn" hx-get="/search-art" hx-target="#art-results" hx-include="#online-art input">Look online</button>
+    <div id="art-results"></div>
+  </div>
   <button type="submit">Edit Track(s)</button>
 </form>
 {% else %}

@@ -16,7 +16,8 @@ docker compose up --build
 ```
 
 The web UI allows you to submit a YouTube playlist URL, approve all staged tracks
-or delete the staging area.
+or delete the staging area. You can also replace album art by clicking an
+existing cover and searching iTunes for alternatives.
 
 ## Environment Variables
 

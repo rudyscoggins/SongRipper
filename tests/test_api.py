@@ -205,6 +205,27 @@ def test_edit_multiple_handles_missing_file(monkeypatch):
     assert "bad" in resp.text
 
 
+def test_search_art_returns_images(monkeypatch):
+    monkeypatch.setattr(api.worker, "search_album_art", lambda a, b: ["u1", "u2"])
+    resp = client.get("/search-art", params={"artist": "A", "album": "B", "filepath": "f.mp3"})
+    assert resp.status_code == 200
+    assert resp.text.count("hx-post=\"/apply-art\"") == 2
+    assert "value='f.mp3'" in resp.text
+
+
+def test_apply_art_triggers_refresh(monkeypatch):
+    monkeypatch.setattr(api.worker, "download_image", lambda u: b"img")
+    calls = []
+    def fake_update(fp, data, mime="image/jpeg"):
+        calls.append((fp, data, mime))
+
+    monkeypatch.setattr(api.worker, "update_album_art", fake_update)
+    resp = client.post("/apply-art", data={"filepath": "x.mp3", "url": "u"}, headers={"Hx-Request": "1"})
+    assert resp.status_code == 204
+    assert resp.headers["HX-Trigger"] == "refreshStaging"
+    assert calls == [("x.mp3", b"img", "image/jpeg")]
+
+
 def test_staging_template_has_multi_edit_form():
     path = os.path.join(
         os.path.dirname(__file__), "..", "src", "songripper", "templates", "staging.html"
@@ -263,3 +284,14 @@ def test_staging_template_shows_no_tracks_message():
         html = fh.read()
     assert "No tracks found" in html
     assert 'id="no-tracks"' in html
+
+
+def test_staging_template_has_online_art_section():
+    path = os.path.join(
+        os.path.dirname(__file__), "..", "src", "songripper", "templates", "staging.html"
+    )
+    with open(path) as fh:
+        html = fh.read()
+    assert 'id="online-art"' in html
+    assert 'hx-get="/search-art"' in html
+    assert 'data-filepath' in html
