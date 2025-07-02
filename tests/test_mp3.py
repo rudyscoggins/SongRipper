@@ -83,11 +83,27 @@ def test_mp3_from_url(tmp_path, monkeypatch):
     assert path == tmp_path / f"{title_clean}.mp3"
 
     expected_out = worker.YT_BASE + [
-        "-x", "--audio-format", "mp3",
-        "-o", str(tmp_path / f"{title_clean}.%(ext)s"),
+        "-x",
+        "--audio-format",
+        "mp3",
+        "-o",
+        str(tmp_path / f"{title_clean}.%(ext)s"),
         "http://x",
     ]
-    assert run_calls == [(expected_out, True)]
+    expected_trim = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        str(tmp_path / f"{title_clean}.mp3"),
+        "-af",
+        (
+            "silenceremove="
+            "start_periods=1:start_duration=5:start_threshold=-50dB:" +
+            "stop_periods=1:stop_duration=5:stop_threshold=-50dB"
+        ),
+        str(tmp_path / f"{title_clean}_trim.mp3"),
+    ]
+    assert run_calls == [(expected_out, True), (expected_trim, True)]
     assert fetch_calls == [(artist_clean, title_clean)]
     assert check_calls == [(
         worker.YT_BASE + ["-J", "--no-playlist", "http://x"],
@@ -222,4 +238,17 @@ def test_mp3_from_url_fallback_values(tmp_path, monkeypatch):
         str(tmp_path / "Unknown Title.%(ext)s"),
         "http://x",
     ]
-    assert run_calls == [(expected_out, True)]
+    expected_trim = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        str(tmp_path / "Unknown Title.mp3"),
+        "-af",
+        (
+            "silenceremove="
+            "start_periods=1:start_duration=5:start_threshold=-50dB:" +
+            "stop_periods=1:stop_duration=5:stop_threshold=-50dB"
+        ),
+        str(tmp_path / "Unknown Title_trim.mp3"),
+    ]
+    assert run_calls == [(expected_out, True), (expected_trim, True)]
