@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
   fadeOutAlerts(alerts);
   updateApprovalButton();
   document.body.addEventListener('click', fillMultiEditFromCell);
+  document.body.addEventListener('click', fillAlbumArtField);
   syncSelectAll();
 });
 
@@ -61,6 +62,25 @@ function fillMultiEditFromCell(e) {
   if (checkbox) checkbox.checked = true;
   form.scrollIntoView({behavior: 'smooth'});
   const row = td.closest('tr');
+  if (row) {
+    const trackBox = row.querySelector('input[name=track]');
+    if (trackBox && !trackBox.checked) {
+      trackBox.checked = true;
+      syncSelectAll();
+      updateApprovalButton();
+    }
+  }
+}
+
+function fillAlbumArtField(e) {
+  const img = e.target.closest('img.album-art');
+  if (!img) return;
+  const form = document.getElementById('multi-edit');
+  if (!form) return;
+  const checkbox = form.querySelector('input[name="art_enable"]');
+  if (checkbox) checkbox.checked = true;
+  form.scrollIntoView({behavior: 'smooth'});
+  const row = img.closest('tr');
   if (row) {
     const trackBox = row.querySelector('input[name=track]');
     if (trackBox && !trackBox.checked) {
