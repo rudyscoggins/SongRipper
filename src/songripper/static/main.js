@@ -41,12 +41,12 @@ document.addEventListener('htmx:afterSwap', function (evt) {
 function updateApprovalButton() {
   const btnAll = document.getElementById('approve-btn');
   const btnSel = document.getElementById('approve-selected-btn');
+  const editBtn = document.querySelector('#multi-edit button[type=submit]');
   const hasTracks = document.querySelector('#staging-list tbody tr') !== null;
   if (btnAll) btnAll.disabled = !hasTracks;
-  if (btnSel) {
-    const anyChecked = document.querySelector('#staging-list input[name=track]:checked') !== null;
-    btnSel.disabled = !anyChecked;
-  }
+  const anyChecked = document.querySelector('#staging-list input[name=track]:checked') !== null;
+  if (btnSel) btnSel.disabled = !anyChecked;
+  if (editBtn) editBtn.disabled = !anyChecked;
 }
 
 function fillMultiEditFromCell(e) {

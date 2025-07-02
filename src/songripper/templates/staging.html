@@ -47,7 +47,7 @@
       <label><input type="checkbox" name="art_enable"> Album Art</label>
       <input type="file" name="art_file" accept="image/*"></div>
   </fieldset>
-  <button type="submit">Edit Track(s)</button>
+  <button id="edit-btn" type="submit"{% if not tracks %} disabled{% endif %}>Edit Track(s)</button>
 </form>
 {% else %}
 <p id="no-tracks">No tracks found</p>
