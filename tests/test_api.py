@@ -294,4 +294,6 @@ def test_staging_template_has_online_art_section():
         html = fh.read()
     assert 'id="online-art"' in html
     assert 'hx-get="/search-art"' in html
+    assert 'id="look-online-btn"' in html
+    assert 'look-online-btn" hx-get="/search-art" hx-target="#art-results" hx-include="#online-art input" disabled' in html
     assert 'data-filepath' in html

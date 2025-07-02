@@ -81,6 +81,8 @@ function handleAlbumArtClick(e) {
   if (!form) return;
   const section = document.getElementById('online-art');
   if (section) section.hidden = false;
+  const lookBtn = form.querySelector('#look-online-btn');
+  if (lookBtn) lookBtn.disabled = false;
   const artistField = form.querySelector('#online-art input[name="artist"]');
   const albumField = form.querySelector('#online-art input[name="album"]');
   const fileField = form.querySelector('#online-art input[name="filepath"]');
