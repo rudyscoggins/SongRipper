@@ -213,6 +213,7 @@ def test_staging_template_has_multi_edit_form():
         html = fh.read()
     assert "Edit Track(s)" in html
     assert "hx-post=\"/edit-multiple\"" in html
+    assert 'id="edit-btn"' in html
 
 
 def test_staging_template_has_album_art_field():
