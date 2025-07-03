@@ -264,3 +264,27 @@ def test_staging_template_shows_no_tracks_message():
         html = fh.read()
     assert "No tracks found" in html
     assert 'id="no-tracks"' in html
+
+
+def test_check_endpoint_hx(monkeypatch):
+    monkeypatch.setattr(worker, "find_matching_tracks", lambda fp: [f"/a{worker.AUDIO_EXT}"])
+    resp = client.get("/check", params={"filepath": f"file{worker.AUDIO_EXT}"}, headers={"Hx-Request": "1"})
+    assert resp.status_code == 200
+    assert "Possible matches" in resp.text
+
+
+def test_check_endpoint_redirect(monkeypatch):
+    monkeypatch.setattr(worker, "find_matching_tracks", lambda fp: [])
+    resp = client.get("/check", params={"filepath": f"file{worker.AUDIO_EXT}"})
+    assert resp.status_code == 303
+    assert "msg=No+matches+found" in resp.headers["location"]
+
+
+def test_staging_template_has_check_button():
+    path = os.path.join(
+        os.path.dirname(__file__), "..", "src", "songripper", "templates", "staging.html"
+    )
+    with open(path) as fh:
+        html = fh.read()
+    assert "hx-get=\"/check" in html
+    assert "hx-target=\"#alerts\"" in html

@@ -535,3 +535,9 @@ class RipperService:
         with self.album_lock:
             self.album_art_cache[key] = data
 
+    def find_matching_tracks(self, filepath: str) -> list[Path]:
+        """Return existing library tracks similar to ``filepath``."""
+        tags = self.read_tags(filepath)
+        dest_dir = self.nas_path / tags["artist"] / tags["album"]
+        return self._find_matches(dest_dir, Path(filepath).stem)
+

@@ -1,5 +1,6 @@
 # src/songripper/api.py
 from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException
+from pathlib import Path
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -170,3 +171,17 @@ def edit_multiple(
         resp.headers["HX-Trigger"] = "refreshStaging"
         return resp
     return RedirectResponse("/", status_code=303)
+
+
+@app.get("/check")
+def check_duplicates(request: Request, filepath: str):
+    matches = worker.find_matching_tracks(filepath)
+    if matches:
+        names = ", ".join(Path(m).name for m in matches)
+        msg = f"Possible matches: {names}"
+    else:
+        msg = "No matches found"
+    if request.headers.get("Hx-Request"):
+        context = {"request": request, "message": msg}
+        return templates.TemplateResponse("message.html", context)
+    return RedirectResponse(f"/?msg={msg.replace(' ', '+')}", status_code=303)
