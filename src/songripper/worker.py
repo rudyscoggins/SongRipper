@@ -121,3 +121,9 @@ def update_track(filepath: str, field: str, value: str) -> Path:
 def update_album_art(filepath: str, data: bytes, mime: str = "image/jpeg") -> None:
     _sync_service()
     _service.update_album_art(filepath, data, mime)
+
+
+def find_matching_tracks(filepath: str) -> list[str]:
+    """Return library tracks with names similar to ``filepath``."""
+    _sync_service()
+    return [str(p) for p in _service.find_matching_tracks(filepath)]

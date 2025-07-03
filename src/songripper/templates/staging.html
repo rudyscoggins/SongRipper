@@ -8,6 +8,7 @@
       <th>Album</th>
       <th>Title</th>
       <th>Filepath</th>
+      <th>Check</th>
     </tr>
   </thead>
   <tbody>
@@ -25,6 +26,11 @@
       <td data-field="album" class="editable-field">{{ track.album }}</td>
       <td data-field="title" class="editable-field">{{ track.title }}</td>
       <td>{{ track.filepath }}</td>
+      <td>
+        <button type="button" class="check-btn"
+                hx-get="/check?filepath={{ track.filepath | urlencode }}"
+                hx-target="#alerts" hx-swap="innerHTML">Check</button>
+      </td>
     </tr>
   {% endfor %}
   </tbody>
