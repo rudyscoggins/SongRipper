@@ -24,6 +24,8 @@ class RipperService:
     """Service encapsulating all ripping and file management operations."""
 
     YT_BASE = ["yt-dlp", "--quiet", "--no-warnings"]
+    AUDIO_FORMAT = "m4a"
+    AUDIO_EXT = ".m4a"
 
     def __init__(self, data_dir: Path = DATA_DIR, nas_path: Path = NAS_PATH) -> None:
         self.data_dir = data_dir
@@ -110,7 +112,7 @@ class RipperService:
         fetch_cover=None,
         fetch_thumbnail=None,
     ) -> tuple[str, str, Path]:
-        """Download ``url`` to ``staging_dir`` and tag the resulting MP3."""
+        """Download ``url`` to ``staging_dir`` and tag the resulting audio."""
 
         lock = lock or self.tag_lock
         fetch_cover = fetch_cover or self.fetch_cover
@@ -140,12 +142,14 @@ class RipperService:
 
         outtmpl = str(staging_dir / f"{prefix}{title}.%(ext)s")
         subprocess_mod.run(
-            self.YT_BASE + ["-x", "--audio-format", "mp3", "-o", outtmpl, url], check=True
+            self.YT_BASE
+            + ["-x", "--audio-format", self.AUDIO_FORMAT, "-o", outtmpl, url],
+            check=True,
         )
-        mp3_path = staging_dir / f"{prefix}{title}.mp3"
+        mp3_path = staging_dir / f"{prefix}{title}{self.AUDIO_EXT}"
 
         # Trim any long silence (>5s) at the start or end of the track.
-        tmp_trim = mp3_path.with_name(mp3_path.stem + "_trim.mp3")
+        tmp_trim = mp3_path.with_name(mp3_path.stem + "_trim" + self.AUDIO_EXT)
         trim_cmd = [
             "ffmpeg",
             "-y",
@@ -168,15 +172,15 @@ class RipperService:
                 tmp_trim.unlink()
 
         try:
-            from mutagen.easyid3 import EasyID3
-            from mutagen.id3 import ID3, APIC
+            from mutagen.easymp4 import EasyMP4
+            from mutagen.mp4 import MP4, MP4Cover
         except Exception:
-            EasyID3 = ID3 = APIC = None  # type: ignore
+            EasyMP4 = MP4 = MP4Cover = None  # type: ignore
 
         cover = None
-        if EasyID3 is not None:
+        if EasyMP4 is not None:
             with lock:
-                audio = EasyID3(mp3_path)
+                audio = EasyMP4(mp3_path)
                 audio["artist"], audio["title"], audio["album"] = [artist], [title], [album]
                 if prefix:
                     audio["tracknumber"] = [prefix.strip()]
@@ -200,16 +204,10 @@ class RipperService:
                         cover = fetch_thumbnail(thumb_url)
                 with self.album_lock:
                     self.album_art_cache[key] = cover
-            if cover:
+            if cover and MP4 is not None:
                 with lock:
-                    tags = ID3(mp3_path)
-                    tags["APIC"] = APIC(
-                        encoding=3,
-                        mime="image/jpeg",
-                        type=3,
-                        desc="Cover",
-                        data=cover,
-                    )
+                    tags = MP4(mp3_path)
+                    tags["covr"] = [MP4Cover(cover, imageformat=MP4Cover.FORMAT_JPEG)]
                     tags.save()
         return artist, album, mp3_path
 
@@ -325,7 +323,7 @@ class RipperService:
             for album_dir in artist_dir.iterdir():
                 if not album_dir.is_dir():
                     continue
-                for mp3 in album_dir.glob("*.mp3"):
+                for mp3 in album_dir.glob(f"*{self.AUDIO_EXT}"):
                     name = mp3.stem
                     if re.match(r"\d{2} ", name):
                         title = name[3:]
@@ -333,17 +331,22 @@ class RipperService:
                         title = name
                     cover_b64 = None
                     try:
-                        from mutagen.id3 import ID3
+                        from mutagen.mp4 import MP4, MP4Cover
                         import base64
 
-                        tags = ID3(mp3)
-                        pics = tags.getall("APIC") if hasattr(tags, "getall") else []
+                        tags = MP4(mp3)
+                        pics = tags.tags.get("covr") if tags.tags else []
                         if pics:
                             pic = pics[0]
-                            mime = getattr(pic, "mime", "image/jpeg")
+                            mime = (
+                                "image/png"
+                                if getattr(pic, "imageformat", MP4Cover.FORMAT_JPEG)
+                                == MP4Cover.FORMAT_PNG
+                                else "image/jpeg"
+                            )
                             cover_b64 = "data:%s;base64,%s" % (
                                 mime,
-                                base64.b64encode(pic.data).decode("ascii"),
+                                base64.b64encode(bytes(pic)).decode("ascii"),
                             )
                     except Exception:
                         cover_b64 = None
@@ -363,12 +366,12 @@ class RipperService:
     def read_tags(self, filepath: str) -> dict[str, str]:
         path = Path(filepath)
         try:
-            from mutagen.easyid3 import EasyID3
+            from mutagen.easymp4 import EasyMP4
         except Exception:
-            EasyID3 = None
-        if EasyID3 is not None:
+            EasyMP4 = None
+        if EasyMP4 is not None:
             try:
-                audio = EasyID3(path)
+                audio = EasyMP4(path)
                 name = path.stem
                 title_from_file = name[3:] if re.match(r"\d{2} ", name) else name
                 return {
@@ -391,12 +394,12 @@ class RipperService:
         tags = self.read_tags(filepath)
         tags[field] = value
         try:
-            from mutagen.easyid3 import EasyID3
+            from mutagen.easymp4 import EasyMP4
         except Exception:
-            EasyID3 = None
-        if EasyID3 is not None:
+            EasyMP4 = None
+        if EasyMP4 is not None:
             try:
-                audio = EasyID3(filepath)
+                audio = EasyMP4(filepath)
                 audio["artist"] = [tags["artist"]]
                 audio["album"] = [tags["album"]]
                 audio["title"] = [tags["title"]]
@@ -412,7 +415,7 @@ class RipperService:
         prefix = ""
         if re.match(r"\d{2} ", path.stem):
             prefix = path.stem[:3]
-        new_path = dest_dir / f"{prefix}{tags['title']}.mp3"
+        new_path = dest_dir / f"{prefix}{tags['title']}{self.AUDIO_EXT}"
         if path.resolve() != new_path.resolve():
             try:
                 path.rename(new_path)
@@ -432,7 +435,7 @@ class RipperService:
         if not path.exists():
             raise TrackUpdateError(f"File not found: {filepath}")
         try:
-            from mutagen.id3 import ID3, APIC
+            from mutagen.mp4 import MP4, MP4Cover
         except Exception:
             return
 
@@ -441,27 +444,27 @@ class RipperService:
 
         def write_art(mp3: Path) -> None:
             try:
-                tags = ID3(mp3)
+                tags = MP4(mp3)
             except Exception:
-                tags = ID3()
+                tags = MP4()
             if hasattr(tags, "delall"):
                 try:
-                    tags.delall("APIC")  # type: ignore[attr-defined]
+                    tags.delall("covr")  # type: ignore[attr-defined]
                 except Exception:
                     pass
-            tags["APIC"] = APIC(
-                encoding=3,
-                mime=mime or "image/jpeg",
-                type=3,
-                desc="Cover",
-                data=data,
-            )
+            tags["covr"] = [
+                MP4Cover(
+                    data,
+                    imageformat=
+                    MP4Cover.FORMAT_PNG if mime == "image/png" else MP4Cover.FORMAT_JPEG,
+                )
+            ]
             try:
                 tags.save(mp3)
             except Exception as e:
                 raise TrackUpdateError(str(e))
 
-        for mp3 in path.parent.glob("*.mp3"):
+        for mp3 in path.parent.glob(f"*{self.AUDIO_EXT}"):
             write_art(mp3)
 
         with self.album_lock:

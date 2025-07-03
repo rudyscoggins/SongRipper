@@ -7,7 +7,7 @@ import subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from songripper import worker
-from songripper.worker import mp3_from_url
+from songripper.worker import mp3_from_url, AUDIO_EXT, AUDIO_FORMAT
 
 
 def test_mp3_from_url(tmp_path, monkeypatch):
@@ -54,22 +54,27 @@ def test_mp3_from_url(tmp_path, monkeypatch):
         def save(self):
             pass
 
-    class DummyAPIC:
-        def __init__(self, **kw):
-            self.kw = kw
+    class DummyAPIC(bytes):
+        FORMAT_JPEG = 0
+        FORMAT_PNG = 1
+
+        def __new__(cls, data, imageformat=None):
+            obj = bytes.__new__(cls, data)
+            obj.kw = {"data": data, "imageformat": imageformat}
+            return obj
 
     monkeypatch.setattr(subprocess, "check_output", fake_check_output)
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(worker, "fetch_cover", fake_fetch_cover)
     monkeypatch.setitem(
         sys.modules,
-        "mutagen.easyid3",
-        types.SimpleNamespace(EasyID3=DummyEasyID3),
+        "mutagen.easymp4",
+        types.SimpleNamespace(EasyMP4=DummyEasyID3),
     )
     monkeypatch.setitem(
         sys.modules,
-        "mutagen.id3",
-        types.SimpleNamespace(ID3=DummyID3, APIC=DummyAPIC),
+        "mutagen.mp4",
+        types.SimpleNamespace(MP4=DummyID3, MP4Cover=DummyAPIC),
     )
 
     artist, album, path = mp3_from_url("http://x", tmp_path)
@@ -80,12 +85,12 @@ def test_mp3_from_url(tmp_path, monkeypatch):
 
     assert artist == artist_clean
     assert album == album_clean
-    assert path == tmp_path / f"{title_clean}.mp3"
+    assert path == tmp_path / f"{title_clean}{AUDIO_EXT}"
 
     expected_out = worker.YT_BASE + [
         "-x",
         "--audio-format",
-        "mp3",
+        AUDIO_FORMAT,
         "-o",
         str(tmp_path / f"{title_clean}.%(ext)s"),
         "http://x",
@@ -94,14 +99,14 @@ def test_mp3_from_url(tmp_path, monkeypatch):
         "ffmpeg",
         "-y",
         "-i",
-        str(tmp_path / f"{title_clean}.mp3"),
+        str(tmp_path / f"{title_clean}{AUDIO_EXT}"),
         "-af",
         (
             "silenceremove="
             "start_periods=1:start_duration=5:start_threshold=-50dB:" +
             "stop_periods=1:stop_duration=5:stop_threshold=-50dB"
         ),
-        str(tmp_path / f"{title_clean}_trim.mp3"),
+        str(tmp_path / f"{title_clean}_trim{AUDIO_EXT}"),
     ]
     assert run_calls == [(expected_out, True), (expected_trim, True)]
     assert fetch_calls == [(artist_clean, title_clean)]
@@ -109,7 +114,7 @@ def test_mp3_from_url(tmp_path, monkeypatch):
         worker.YT_BASE + ["-J", "--no-playlist", "http://x"],
         True,
     )]
-    assert easy_paths == [tmp_path / f"{title_clean}.mp3"]
+    assert easy_paths == [tmp_path / f"{title_clean}{AUDIO_EXT}"]
 
 
 def test_mp3_from_url_uses_cached_cover(tmp_path, monkeypatch):
@@ -150,19 +155,24 @@ def test_mp3_from_url_uses_cached_cover(tmp_path, monkeypatch):
         def save(self):
             pass
 
-    class DummyAPIC:
-        def __init__(self, **kw):
-            self.kw = kw
+    class DummyAPIC(bytes):
+        FORMAT_JPEG = 0
+        FORMAT_PNG = 1
+
+        def __new__(cls, data, imageformat=None):
+            obj = bytes.__new__(cls, data)
+            obj.kw = {"data": data, "imageformat": imageformat}
+            return obj
 
     monkeypatch.setitem(
         sys.modules,
-        "mutagen.easyid3",
-        types.SimpleNamespace(EasyID3=DummyEasyID3),
+        "mutagen.easymp4",
+        types.SimpleNamespace(EasyMP4=DummyEasyID3),
     )
     monkeypatch.setitem(
         sys.modules,
-        "mutagen.id3",
-        types.SimpleNamespace(ID3=DummyID3, APIC=DummyAPIC),
+        "mutagen.mp4",
+        types.SimpleNamespace(MP4=DummyID3, MP4Cover=DummyAPIC),
     )
 
     worker.ALBUM_ART_CACHE.clear()
@@ -209,31 +219,36 @@ def test_mp3_from_url_fallback_values(tmp_path, monkeypatch):
         def save(self):
             pass
 
-    class DummyAPIC:
-        def __init__(self, **kw):
-            self.kw = kw
+    class DummyAPIC(bytes):
+        FORMAT_JPEG = 0
+        FORMAT_PNG = 1
+
+        def __new__(cls, data, imageformat=None):
+            obj = bytes.__new__(cls, data)
+            obj.kw = {"data": data, "imageformat": imageformat}
+            return obj
 
     monkeypatch.setitem(
         sys.modules,
-        "mutagen.easyid3",
-        types.SimpleNamespace(EasyID3=DummyEasyID3),
+        "mutagen.easymp4",
+        types.SimpleNamespace(EasyMP4=DummyEasyID3),
     )
     monkeypatch.setitem(
         sys.modules,
-        "mutagen.id3",
-        types.SimpleNamespace(ID3=DummyID3, APIC=DummyAPIC),
+        "mutagen.mp4",
+        types.SimpleNamespace(MP4=DummyID3, MP4Cover=DummyAPIC),
     )
 
     artist, album, path = mp3_from_url("http://x", tmp_path)
 
     assert artist == "Unknown Artist"
     assert album == "Unknown Album"
-    assert path == tmp_path / "Unknown Title.mp3"
+    assert path == tmp_path / f"Unknown Title{AUDIO_EXT}"
 
     expected_out = worker.YT_BASE + [
         "-x",
         "--audio-format",
-        "mp3",
+        AUDIO_FORMAT,
         "-o",
         str(tmp_path / "Unknown Title.%(ext)s"),
         "http://x",
@@ -242,13 +257,13 @@ def test_mp3_from_url_fallback_values(tmp_path, monkeypatch):
         "ffmpeg",
         "-y",
         "-i",
-        str(tmp_path / "Unknown Title.mp3"),
+        str(tmp_path / f"Unknown Title{AUDIO_EXT}"),
         "-af",
         (
             "silenceremove="
             "start_periods=1:start_duration=5:start_threshold=-50dB:" +
             "stop_periods=1:stop_duration=5:stop_threshold=-50dB"
         ),
-        str(tmp_path / "Unknown Title_trim.mp3"),
+        str(tmp_path / f"Unknown Title_trim{AUDIO_EXT}"),
     ]
     assert run_calls == [(expected_out, True), (expected_trim, True)]

@@ -22,6 +22,8 @@ ALBUM_ART_CACHE = _service.album_art_cache
 ALBUM_LOCK = _service.album_lock
 DATA_DIR = _service.data_dir
 NAS_PATH = _service.nas_path
+AUDIO_FORMAT = RipperService.AUDIO_FORMAT
+AUDIO_EXT = RipperService.AUDIO_EXT
 
 
 def _sync_service() -> None:

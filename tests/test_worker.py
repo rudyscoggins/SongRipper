@@ -84,8 +84,8 @@ def test_rip_playlist_moves_files(monkeypatch, tmp_path):
     monkeypatch.setattr(worker.subprocess, "check_output", fake_check_output)
 
     songs = iter([
-        ("artist1", "album1", tmp_path / "song1.mp3"),
-        ("artist2", "album2", tmp_path / "song2.mp3"),
+        ("artist1", "album1", tmp_path / f"song1{worker.AUDIO_EXT}"),
+        ("artist2", "album2", tmp_path / f"song2{worker.AUDIO_EXT}"),
     ])
 
     def fake_mp3_from_url(url, staging):
@@ -102,12 +102,12 @@ def test_rip_playlist_moves_files(monkeypatch, tmp_path):
 
     result = worker.rip_playlist("http://pl")
 
-    dest1 = tmp_path / "staging" / "artist1" / "album1" / "song1.mp3"
-    dest2 = tmp_path / "staging" / "artist2" / "album2" / "song2.mp3"
+    dest1 = tmp_path / "staging" / "artist1" / "album1" / f"song1{worker.AUDIO_EXT}"
+    dest2 = tmp_path / "staging" / "artist2" / "album2" / f"song2{worker.AUDIO_EXT}"
 
     assert set(moves) == {
-        (str(tmp_path / "song1.mp3"), dest1),
-        (str(tmp_path / "song2.mp3"), dest2),
+        (str(tmp_path / f"song1{worker.AUDIO_EXT}"), dest1),
+        (str(tmp_path / f"song2{worker.AUDIO_EXT}"), dest2),
     }
     assert result == "done"
 
@@ -122,7 +122,9 @@ def test_rip_playlist_accepts_video_url(monkeypatch, tmp_path):
     )
 
     monkeypatch.setattr(
-        worker, "mp3_from_url", lambda url, staging: ("a", "b", tmp_path / "s.mp3")
+        worker,
+        "mp3_from_url",
+        lambda url, staging: ("a", "b", tmp_path / f"s{worker.AUDIO_EXT}"),
     )
 
     moves = []
@@ -130,8 +132,8 @@ def test_rip_playlist_accepts_video_url(monkeypatch, tmp_path):
 
     result = worker.rip_playlist("http://vid")
 
-    dest = tmp_path / "staging" / "a" / "b" / "s.mp3"
-    assert moves == [(str(tmp_path / "s.mp3"), dest)]
+    dest = tmp_path / "staging" / "a" / "b" / f"s{worker.AUDIO_EXT}"
+    assert moves == [(str(tmp_path / f"s{worker.AUDIO_EXT}"), dest)]
     assert result == "done"
 
 
@@ -143,7 +145,7 @@ def test_staging_has_files(tmp_path):
     staging.mkdir()
     # Empty dir -> False
     assert worker.staging_has_files() is False
-    (staging / "song.mp3").write_text("x")
+    (staging / f"song{worker.AUDIO_EXT}").write_text("x")
     assert worker.staging_has_files() is True
 
 
@@ -152,10 +154,10 @@ def test_list_staged_tracks(tmp_path):
     staging = tmp_path / "staging"
     # Create files in reverse order to ensure sorting occurs
     (staging / "BArtist" / "BAlbum").mkdir(parents=True)
-    f2 = staging / "BArtist" / "BAlbum" / "Song2.mp3"
+    f2 = staging / "BArtist" / "BAlbum" / f"Song2{worker.AUDIO_EXT}"
     f2.write_text("y")
     (staging / "AArtist" / "AAlbum").mkdir(parents=True)
-    f1 = staging / "AArtist" / "AAlbum" / "Song1.mp3"
+    f1 = staging / "AArtist" / "AAlbum" / f"Song1{worker.AUDIO_EXT}"
     f1.write_text("x")
 
     tracks = worker.list_staged_tracks()
@@ -207,19 +209,24 @@ def test_mp3_from_url_embeds_thumbnail_when_no_itunes(monkeypatch, tmp_path):
         def save(self):
             pass
 
-    class DummyAPIC:
-        def __init__(self, **kw):
-            self.kw = kw
+    class DummyAPIC(bytes):
+        FORMAT_JPEG = 0
+        FORMAT_PNG = 1
+
+        def __new__(cls, data, imageformat=None):
+            obj = bytes.__new__(cls, data)
+            obj.kw = {"data": data, "imageformat": imageformat}
+            return obj
 
     monkeypatch.setitem(
         sys.modules,
-        "mutagen.easyid3",
-        types.SimpleNamespace(EasyID3=DummyEasyID3),
+        "mutagen.easymp4",
+        types.SimpleNamespace(EasyMP4=DummyEasyID3),
     )
     monkeypatch.setitem(
         sys.modules,
-        "mutagen.id3",
-        types.SimpleNamespace(ID3=DummyID3, APIC=DummyAPIC),
+        "mutagen.mp4",
+        types.SimpleNamespace(MP4=DummyID3, MP4Cover=DummyAPIC),
     )
 
     artist, album, path = worker.mp3_from_url("http://x", tmp_path)
@@ -228,27 +235,28 @@ def test_mp3_from_url_embeds_thumbnail_when_no_itunes(monkeypatch, tmp_path):
     title_clean = worker.clean(meta["track"])
 
     assert thumb_calls == [meta["thumbnail"]]
-    assert isinstance(id3_objects[0]["APIC"], DummyAPIC)
-    assert id3_objects[0]["APIC"].kw["data"] == b"thumb"
-    assert path == tmp_path / f"{title_clean}.mp3"
+    assert isinstance(id3_objects[0]["covr"], list)
+    assert isinstance(id3_objects[0]["covr"][0], DummyAPIC)
+    assert id3_objects[0]["covr"][0].kw["data"] == b"thumb"
+    assert path == tmp_path / f"{title_clean}{worker.AUDIO_EXT}"
 
 
 def test_update_track_sanitizes_new_value(tmp_path):
     worker.DATA_DIR = tmp_path
     staging = tmp_path / "staging" / "Artist" / "Album"
     staging.mkdir(parents=True)
-    track = staging / "Song.mp3"
+    track = staging / f"Song{worker.AUDIO_EXT}"
     track.write_text("x")
 
     new_path = worker.update_track(str(track), "artist", "AC/DC")
 
-    assert new_path.name == "Song.mp3"
+    assert new_path.name == f"Song{worker.AUDIO_EXT}"
     assert new_path.exists()
 
 
 def test_update_track_missing_file_raises(tmp_path):
     worker.DATA_DIR = tmp_path
-    missing = tmp_path / "staging" / "bad.mp3"
+    missing = tmp_path / "staging" / f"bad{worker.AUDIO_EXT}"
     with pytest.raises(worker.TrackUpdateError):
         worker.update_track(str(missing), "artist", "A")
 
@@ -258,12 +266,12 @@ def test_update_track_moves_file_and_listing_updates(tmp_path):
 
     staging = tmp_path / "staging" / "OldArtist" / "OldAlbum"
     staging.mkdir(parents=True)
-    track = staging / "OldTitle.mp3"
+    track = staging / f"OldTitle{worker.AUDIO_EXT}"
     track.write_text("x")
 
     # Update artist
     p1 = worker.update_track(str(track), "artist", "NewArtist")
-    assert p1 == tmp_path / "staging" / "NewArtist" / "OldAlbum" / "OldTitle.mp3"
+    assert p1 == tmp_path / "staging" / "NewArtist" / "OldAlbum" / f"OldTitle{worker.AUDIO_EXT}"
     assert p1.exists()
     assert not track.exists()
     tr = worker.list_staged_tracks()
@@ -271,7 +279,7 @@ def test_update_track_moves_file_and_listing_updates(tmp_path):
 
     # Update album
     p2 = worker.update_track(str(p1), "album", "NewAlbum")
-    assert p2 == tmp_path / "staging" / "NewArtist" / "NewAlbum" / "OldTitle.mp3"
+    assert p2 == tmp_path / "staging" / "NewArtist" / "NewAlbum" / f"OldTitle{worker.AUDIO_EXT}"
     assert p2.exists()
     assert not p1.exists()
     tr = worker.list_staged_tracks()
@@ -279,7 +287,7 @@ def test_update_track_moves_file_and_listing_updates(tmp_path):
 
     # Update title
     p3 = worker.update_track(str(p2), "title", "NewTitle")
-    assert p3 == tmp_path / "staging" / "NewArtist" / "NewAlbum" / "NewTitle.mp3"
+    assert p3 == tmp_path / "staging" / "NewArtist" / "NewAlbum" / f"NewTitle{worker.AUDIO_EXT}"
     assert p3.exists()
     tr = worker.list_staged_tracks()
     assert [(t.artist, t.album, t.title) for t in tr] == [
@@ -288,12 +296,12 @@ def test_update_track_moves_file_and_listing_updates(tmp_path):
 
 
 def test_update_album_art_writes_image(monkeypatch, tmp_path):
-    mp3 = tmp_path / "song.mp3"
+    mp3 = tmp_path / f"song{worker.AUDIO_EXT}"
     mp3.write_text("x")
 
     id3_objects = []
 
-    class DummyID3(dict):
+    class DummyMP4(dict):
         def __init__(self, path=None):
             self.path = path
             id3_objects.append(self)
@@ -301,69 +309,77 @@ def test_update_album_art_writes_image(monkeypatch, tmp_path):
         def save(self, path=None):
             self.saved = path
 
-    class DummyAPIC:
-        def __init__(self, **kw):
-            self.kw = kw
+    class DummyCover:
+        FORMAT_JPEG = 0
+        FORMAT_PNG = 1
+
+        def __init__(self, data, imageformat=None):
+            self.kw = {"data": data, "imageformat": imageformat}
 
     monkeypatch.setitem(
         sys.modules,
-        "mutagen.id3",
-        types.SimpleNamespace(ID3=DummyID3, APIC=DummyAPIC),
+        "mutagen.mp4",
+        types.SimpleNamespace(MP4=DummyMP4, MP4Cover=DummyCover),
     )
 
     worker.update_album_art(str(mp3), b"img", "image/png")
 
-    assert isinstance(id3_objects[0]["APIC"], DummyAPIC)
-    assert id3_objects[0]["APIC"].kw["data"] == b"img"
-    assert id3_objects[0]["APIC"].kw["mime"] == "image/png"
+    assert isinstance(id3_objects[0]["covr"], list)
+    assert isinstance(id3_objects[0]["covr"][0], DummyCover)
+    assert id3_objects[0]["covr"][0].kw["data"] == b"img"
+    assert id3_objects[0]["covr"][0].kw["imageformat"] == DummyCover.FORMAT_PNG
     assert id3_objects[0].saved == mp3
 
 
 def test_update_album_art_replaces_existing(monkeypatch, tmp_path):
-    mp3 = tmp_path / "song.mp3"
+    mp3 = tmp_path / f"song{worker.AUDIO_EXT}"
     mp3.write_text("x")
 
-    class DummyID3(dict):
+    class DummyMP4(dict):
         def __init__(self, path=None):
             self.deleted = False
             self.saved = None
 
         def delall(self, key):
-            if key == "APIC":
+            if key == "covr":
                 self.deleted = True
 
         def save(self, path=None):
             self.saved = path
 
-    class DummyAPIC:
-        def __init__(self, **kw):
-            self.kw = kw
+    class DummyCover:
+        FORMAT_JPEG = 0
+        FORMAT_PNG = 1
 
-    id3_instance = DummyID3()
+        def __init__(self, data, imageformat=None):
+            self.kw = {"data": data, "imageformat": imageformat}
+
+    id3_instance = DummyMP4()
     monkeypatch.setitem(
         sys.modules,
-        "mutagen.id3",
-        types.SimpleNamespace(ID3=lambda p=None: id3_instance, APIC=DummyAPIC),
+        "mutagen.mp4",
+        types.SimpleNamespace(MP4=lambda p=None: id3_instance, MP4Cover=DummyCover),
     )
 
     worker.update_album_art(str(mp3), b"img", "image/png")
 
     assert id3_instance.deleted
-    assert isinstance(id3_instance["APIC"], DummyAPIC)
+    assert isinstance(id3_instance["covr"], list)
+    assert isinstance(id3_instance["covr"][0], DummyCover)
     assert id3_instance.saved == mp3
 
 
 def test_update_album_art_updates_all_album_tracks(monkeypatch, tmp_path):
     album_dir = tmp_path / "Artist" / "Album"
     album_dir.mkdir(parents=True)
-    t1 = album_dir / "t1.mp3"
-    t2 = album_dir / "t2.mp3"
+    t1 = album_dir / f"t1{worker.AUDIO_EXT}"
+    t2 = album_dir / f"t2{worker.AUDIO_EXT}"
     t1.write_text("x")
     t2.write_text("y")
 
     id3_objects = []
 
-    class DummyID3(dict):
+    class DummyMP4(dict):
         def __init__(self, path=None):
             self.path = path
 
@@ -373,19 +389,22 @@ def test_update_album_art_updates_all_album_tracks(monkeypatch, tmp_path):
         def delall(self, key):
             pass
 
-    class DummyAPIC:
-        def __init__(self, **kw):
-            self.kw = kw
-            id3_objects.append((kw.get("data"), self))
+    class DummyCover:
+        FORMAT_JPEG = 0
+        FORMAT_PNG = 1
+
+        def __init__(self, data, imageformat=None):
+            self.kw = {"data": data, "imageformat": imageformat}
+            id3_objects.append((data, self))
 
     def id3_factory(p=None):
-        obj = DummyID3(p)
+        obj = DummyMP4(p)
         return obj
 
     monkeypatch.setitem(
         sys.modules,
-        "mutagen.id3",
-        types.SimpleNamespace(ID3=id3_factory, APIC=DummyAPIC),
+        "mutagen.mp4",
+        types.SimpleNamespace(MP4=id3_factory, MP4Cover=DummyCover),
     )
 
     worker.ALBUM_ART_CACHE.clear()
@@ -398,7 +417,7 @@ def test_update_album_art_updates_all_album_tracks(monkeypatch, tmp_path):
 
 
 def test_update_album_art_missing_file_raises(tmp_path):
-    missing = tmp_path / "x.mp3"
+    missing = tmp_path / f"x{worker.AUDIO_EXT}"
     with pytest.raises(worker.TrackUpdateError):
         worker.update_album_art(str(missing), b"img")
 
@@ -409,16 +428,16 @@ def test_approve_all_merges_existing_artist(tmp_path):
 
     staging = tmp_path / "staging" / "Artist" / "NewAlbum"
     staging.mkdir(parents=True)
-    (staging / "track.mp3").write_text("x")
+    (staging / f"track{worker.AUDIO_EXT}").write_text("x")
 
     existing = worker.NAS_PATH / "Artist" / "OldAlbum"
     existing.mkdir(parents=True, exist_ok=True)
-    (existing / "old.mp3").write_text("y")
+    (existing / f"old{worker.AUDIO_EXT}").write_text("y")
 
     worker.approve_all()
 
-    assert (existing / "old.mp3").exists()
-    assert (worker.NAS_PATH / "Artist" / "NewAlbum" / "track.mp3").exists()
+    assert (existing / f"old{worker.AUDIO_EXT}").exists()
+    assert (worker.NAS_PATH / "Artist" / "NewAlbum" / f"track{worker.AUDIO_EXT}").exists()
     assert not (worker.NAS_PATH / "Artist" / "Artist").exists()
     assert worker.staging_has_files() is False
 
@@ -429,16 +448,16 @@ def test_approve_selected_moves_only_specified(tmp_path):
 
     staging_album = tmp_path / "staging" / "Artist" / "Album"
     staging_album.mkdir(parents=True)
-    t1 = staging_album / "t1.mp3"
-    t2 = staging_album / "t2.mp3"
+    t1 = staging_album / f"t1{worker.AUDIO_EXT}"
+    t2 = staging_album / f"t2{worker.AUDIO_EXT}"
     t1.write_text("x")
     t2.write_text("y")
 
     worker.approve_selected([str(t1)])
 
-    assert (worker.NAS_PATH / "Artist" / "Album" / "t1.mp3").exists()
+    assert (worker.NAS_PATH / "Artist" / "Album" / f"t1{worker.AUDIO_EXT}").exists()
     assert t2.exists()
-    assert (worker.NAS_PATH / "Artist" / "Album" / "t2.mp3").exists() is False
+    assert (worker.NAS_PATH / "Artist" / "Album" / f"t2{worker.AUDIO_EXT}").exists() is False
     assert worker.staging_has_files() is True
 
     worker.approve_selected([str(t2)])
@@ -456,7 +475,7 @@ def test_rip_playlist_runs_in_parallel(monkeypatch, tmp_path):
     def fake_mp3_from_url(url, staging):
         thread_ids.append(threading.get_ident())
         time.sleep(0.01)
-        return ("a", "b", tmp_path / f"{url.split('/')[-1]}.mp3")
+        return ("a", "b", tmp_path / f"{url.split('/')[-1]}{worker.AUDIO_EXT}")
 
     monkeypatch.setattr(worker, "mp3_from_url", fake_mp3_from_url)
     monkeypatch.setattr(worker.shutil, "move", lambda *a, **k: None)

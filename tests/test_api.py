@@ -69,7 +69,7 @@ def test_approve_selected_hx_triggers_refresh(monkeypatch):
     monkeypatch.setattr(api, "worker_approve_selected", worker.approve_selected)
     resp = client.post(
         "/approve-selected",
-        data=[("track", "a.mp3"), ("track", "b.mp3")],
+        data=[("track", f"a{worker.AUDIO_EXT}"), ("track", f"b{worker.AUDIO_EXT}")],
         headers={"Hx-Request": "1"},
     )
     assert resp.status_code == 204
@@ -84,7 +84,7 @@ def test_approve_selected_hx_error_returns_message(monkeypatch):
     monkeypatch.setattr(api, "worker_approve_selected", boom)
     resp = client.post(
         "/approve-selected",
-        data=[("track", "a.mp3")],
+        data=[("track", f"a{worker.AUDIO_EXT}")],
         headers={"Hx-Request": "1"},
     )
     assert resp.status_code == 500
@@ -95,7 +95,7 @@ def test_approve_selected_non_hx_redirect(monkeypatch):
     monkeypatch.setattr(worker, "approve_selected", lambda tracks: None)
     resp = client.post(
         "/approve-selected",
-        data=[("track", "a.mp3")],
+        data=[("track", f"a{worker.AUDIO_EXT}")],
     )
     assert resp.status_code == 303
     assert resp.headers["location"] == "/"
@@ -131,7 +131,7 @@ def test_edit_multiple_updates_fields(monkeypatch):
             self.content_type = "image/png"
 
     data = [
-        ("track", "file.mp3"),
+        ("track", f"file{worker.AUDIO_EXT}"),
         ("artist_value", "A"),
         ("artist_enable", "on"),
         ("album_value", "B"),
@@ -150,10 +150,10 @@ def test_edit_multiple_updates_fields(monkeypatch):
     assert resp.status_code == 204
     assert resp.headers["HX-Trigger"] == "refreshStaging"
     assert calls == [
-        ("file.mp3", "artist", "A"),
-        ("file.mp3:artist", "album", "B"),
+        (f"file{worker.AUDIO_EXT}", "artist", "A"),
+        (f"file{worker.AUDIO_EXT}:artist", "album", "B"),
     ]
-    assert art_calls == [("file.mp3:artist:album", b"img", "image/png")]
+    assert art_calls == [(f"file{worker.AUDIO_EXT}:artist:album", b"img", "image/png")]
 
 
 def test_edit_handles_missing_file(monkeypatch):
@@ -163,7 +163,7 @@ def test_edit_handles_missing_file(monkeypatch):
     monkeypatch.setattr(api.worker, "update_track", fake_update)
     resp = client.put(
         "/edit",
-        data={"filepath": "x.mp3", "field": "artist", "value": "A"},
+        data={"filepath": f"x{worker.AUDIO_EXT}", "field": "artist", "value": "A"},
     )
     assert resp.status_code == 400
     assert "not found" in resp.text
@@ -171,15 +171,15 @@ def test_edit_handles_missing_file(monkeypatch):
 
 def test_edit_returns_new_path_and_trigger(monkeypatch):
     def fake_update(fp, field, val):
-        return Path("/new/location.mp3")
+        return Path(f"/new/location{worker.AUDIO_EXT}")
 
     monkeypatch.setattr(api.worker, "update_track", fake_update)
     resp = client.put(
         "/edit",
-        data={"filepath": "x.mp3", "field": "artist", "value": "A"},
+        data={"filepath": f"x{worker.AUDIO_EXT}", "field": "artist", "value": "A"},
     )
     assert resp.headers["HX-Trigger"] == "refreshStaging"
-    assert "hx-get=\"/edit?filepath=/new/location.mp3&field=artist\"" in resp.text
+    assert f"hx-get=\"/edit?filepath=/new/location{worker.AUDIO_EXT}&field=artist\"" in resp.text
 
 
 def test_edit_multiple_handles_missing_file(monkeypatch):
@@ -188,7 +188,7 @@ def test_edit_multiple_handles_missing_file(monkeypatch):
 
     monkeypatch.setattr(api.worker, "update_track", fake_update)
     data = [
-        ("track", "song.mp3"),
+        ("track", f"song{worker.AUDIO_EXT}"),
         ("artist_value", "A"),
         ("artist_enable", "on"),
         ("album_value", ""),
