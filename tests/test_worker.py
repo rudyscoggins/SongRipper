@@ -484,3 +484,45 @@ def test_rip_playlist_runs_in_parallel(monkeypatch, tmp_path):
 
     assert len(set(thread_ids)) >= 2
 
+
+def test_approve_with_checks_overwrites_when_confirmed(tmp_path):
+    worker.DATA_DIR = tmp_path
+    worker.NAS_PATH = tmp_path / "nas"
+
+    staging = tmp_path / "staging" / "Artist" / "Album"
+    staging.mkdir(parents=True)
+    new_file = staging / f"t{worker.AUDIO_EXT}"
+    new_file.write_text("new")
+
+    dest_dir = worker.NAS_PATH / "Artist" / "Album"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest_file = dest_dir / f"t{worker.AUDIO_EXT}"
+    dest_file.write_text("old")
+
+    worker.approve_with_checks(lambda prompt: "y")
+
+    assert dest_file.read_text() == "new"
+    assert not new_file.exists()
+    assert worker.staging_has_files() is False
+
+
+def test_approve_with_checks_skips_when_declined(tmp_path):
+    worker.DATA_DIR = tmp_path
+    worker.NAS_PATH = tmp_path / "nas"
+
+    staging = tmp_path / "staging" / "Artist" / "Album"
+    staging.mkdir(parents=True)
+    new_file = staging / f"t{worker.AUDIO_EXT}"
+    new_file.write_text("new")
+
+    dest_dir = worker.NAS_PATH / "Artist" / "Album"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest_file = dest_dir / f"t{worker.AUDIO_EXT}"
+    dest_file.write_text("old")
+
+    worker.approve_with_checks(lambda prompt: "n")
+
+    assert dest_file.read_text() == "old"
+    assert new_file.exists()
+    assert worker.staging_has_files() is True
+

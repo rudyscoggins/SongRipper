@@ -304,6 +304,71 @@ class RipperService:
         except OSError:
             pass
 
+    # ------------------------------------------------------------------
+    # Duplicate-aware approval helpers
+    # ------------------------------------------------------------------
+    def _find_matches(
+        self, dest_dir: Path, stem: str, *, threshold: float = 0.6
+    ) -> list[Path]:
+        """Return existing files in ``dest_dir`` with similar names."""
+        from difflib import SequenceMatcher
+
+        matches: list[Path] = []
+        if dest_dir.exists():
+            for existing in dest_dir.glob(f"*{self.AUDIO_EXT}"):
+                ratio = SequenceMatcher(None, existing.stem.lower(), stem.lower()).ratio()
+                if ratio >= threshold:
+                    matches.append(existing)
+        return matches
+
+    def approve_with_checks(
+        self,
+        *,
+        shutil_mod=shutil,
+        input_func=input,
+    ) -> None:
+        """Approve staged tracks with duplicate checks and optional overwrite."""
+
+        staging_root = self.data_dir / "staging"
+        if not self.staging_has_files():
+            return
+        for artist_dir in list(staging_root.iterdir()):
+            if not artist_dir.is_dir():
+                continue
+            for album_dir in list(artist_dir.iterdir()):
+                if not album_dir.is_dir():
+                    continue
+                dest_dir = self.nas_path / artist_dir.name / album_dir.name
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                for track_path in list(album_dir.glob(f"*{self.AUDIO_EXT}")):
+                    dest_path = dest_dir / track_path.name
+                    matches = self._find_matches(dest_dir, track_path.stem)
+                    if matches:
+                        print(f"Possible duplicates for {track_path.name}:")
+                        for m in matches:
+                            print(f" - {m.name}")
+                        resp = input_func("Overwrite with new file? [y/N] ").strip().lower()
+                        if not resp.startswith("y"):
+                            continue
+                        if dest_path.exists():
+                            try:
+                                dest_path.unlink()
+                            except OSError:
+                                pass
+                    shutil_mod.move(str(track_path), dest_path)
+                try:
+                    album_dir.rmdir()
+                except OSError:
+                    pass
+            try:
+                artist_dir.rmdir()
+            except OSError:
+                pass
+        try:
+            staging_root.rmdir()
+        except OSError:
+            pass
+
     def delete_staging(self, *, shutil_mod=shutil) -> bool:
         staging = self.data_dir / "staging"
         if not self.staging_has_files():

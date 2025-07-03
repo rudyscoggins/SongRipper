@@ -92,6 +92,12 @@ def approve_selected(paths: list[str]) -> None:
     _service.approve_selected(paths, shutil_mod=shutil)
 
 
+def approve_with_checks(input_func=input) -> None:
+    """Approve all staged tracks with duplicate checks."""
+    _sync_service()
+    _service.approve_with_checks(shutil_mod=shutil, input_func=input_func)
+
+
 def delete_staging() -> bool:
     _sync_service()
     return _service.delete_staging(shutil_mod=shutil)
