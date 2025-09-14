@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+import traceback
 from .worker import (
     rip_playlist,
     approve_all,
@@ -42,7 +43,14 @@ def home(req: Request, msg: str | None = None):
 
 @app.post("/rip")
 def rip(request: Request, youtube_url: str = Form(...)):
-    rip_playlist(youtube_url)
+    try:
+        rip_playlist(youtube_url)
+    except Exception:
+        stack = traceback.format_exc()
+        if request.headers.get("Hx-Request"):
+            context = {"request": request, "message": stack}
+            return templates.TemplateResponse("message.html", context, status_code=500)
+        raise HTTPException(status_code=500, detail=stack)
     if request.headers.get("Hx-Request"):
         return HTMLResponse("", status_code=204, headers={"HX-Trigger": "refreshStaging"})
     return RedirectResponse("/", status_code=303)

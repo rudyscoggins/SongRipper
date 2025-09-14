@@ -3,6 +3,8 @@ import sys
 import types
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -99,6 +101,32 @@ def test_approve_selected_non_hx_redirect(monkeypatch):
     )
     assert resp.status_code == 303
     assert resp.headers["location"] == "/"
+
+
+def test_rip_non_hx_error_returns_stack(monkeypatch):
+    def boom(url):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(worker, "rip_playlist", boom)
+    monkeypatch.setattr(api, "rip_playlist", boom)
+    with pytest.raises(api.HTTPException) as excinfo:
+        client.post("/rip", data={"youtube_url": "http://x"})
+    assert "RuntimeError: boom" in excinfo.value.detail
+
+
+def test_rip_hx_error_returns_stack(monkeypatch):
+    def boom(url):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(worker, "rip_playlist", boom)
+    monkeypatch.setattr(api, "rip_playlist", boom)
+    resp = client.post(
+        "/rip",
+        data={"youtube_url": "http://x"},
+        headers={"Hx-Request": "1"},
+    )
+    assert resp.status_code == 500
+    assert "RuntimeError: boom" in resp.text
 
 
 def test_rip_form_has_afterrequest_handler():
