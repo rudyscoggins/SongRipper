@@ -18,30 +18,27 @@ docker compose up --build
 The web UI allows you to submit a YouTube playlist or video URL, approve all staged tracks
 or delete the staging area.
 
+### Updating an existing deployment
+
+When new changes are available, pull the latest code and rebuild the containers:
+
+```bash
+git fetch origin
+git checkout main
+git pull origin main
+docker compose down
+docker compose up --build -d
+```
+
+This sequence ensures you are running the newest code on the `main` branch and restarts the
+service with a freshly built image.
+
 ## Environment Variables
 
 - `DATA_DIR` – directory where temporary downloads are stored (default: `/data`).
 - `NAS_PATH` – destination path for approved tracks (default: `/music`).
 
 These can be customised in `docker-compose.yml` or when running the container manually.
-
-## Automatic Updates
-
-The provided Compose file also includes a `watchtower` service.  It regularly
-checks for new images and can send Telegram notifications when updates are
-applied.  Create a `.env` file alongside `docker-compose.yml` with your
-Telegram bot credentials:
-
-```bash
-WATCHTOWER_TELEGRAM_TOKEN=<bot token>
-WATCHTOWER_TELEGRAM_CHAT_ID=<chat id>
-```
-
-Watchtower is scoped to containers labelled `com.centurylinklabs.watchtower.scope=songripper`.
-This label is added to the `songripper` service so only it is updated.
-
-Remove or comment out the `watchtower` block if you don't wish to use automatic
-updates.
 
 ## Development
 
