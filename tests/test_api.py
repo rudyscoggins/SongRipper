@@ -48,7 +48,10 @@ def test_approve_hx_triggers_refresh(monkeypatch):
     assert resp.headers["HX-Trigger"] == "refreshStaging"
 
 
-def test_approve_hx_error_returns_message(monkeypatch):
+def test_approve_hx_error_returns_message(monkeypatch, tmp_path):
+    log_path = tmp_path / "errors.log"
+    monkeypatch.setattr(api, "ERROR_LOG_PATH", log_path, raising=False)
+
     def boom():
         raise RuntimeError("oops")
 
@@ -57,6 +60,7 @@ def test_approve_hx_error_returns_message(monkeypatch):
     resp = client.post("/approve", headers={"Hx-Request": "1"})
     assert resp.status_code == 500
     assert "oops" in resp.text
+    assert "oops" in log_path.read_text()
 
 
 def test_approve_non_hx_redirect(monkeypatch):
@@ -78,7 +82,10 @@ def test_approve_selected_hx_triggers_refresh(monkeypatch):
     assert resp.headers["HX-Trigger"] == "refreshStaging"
 
 
-def test_approve_selected_hx_error_returns_message(monkeypatch):
+def test_approve_selected_hx_error_returns_message(monkeypatch, tmp_path):
+    log_path = tmp_path / "errors.log"
+    monkeypatch.setattr(api, "ERROR_LOG_PATH", log_path, raising=False)
+
     def boom(tracks=None):
         raise RuntimeError("oops")
 
@@ -91,6 +98,7 @@ def test_approve_selected_hx_error_returns_message(monkeypatch):
     )
     assert resp.status_code == 500
     assert "oops" in resp.text
+    assert "Tracks: ['a" in log_path.read_text()
 
 
 def test_approve_selected_non_hx_redirect(monkeypatch):
@@ -103,7 +111,10 @@ def test_approve_selected_non_hx_redirect(monkeypatch):
     assert resp.headers["location"] == "/"
 
 
-def test_rip_non_hx_error_returns_stack(monkeypatch):
+def test_rip_non_hx_error_returns_stack(monkeypatch, tmp_path):
+    log_path = tmp_path / "errors.log"
+    monkeypatch.setattr(api, "ERROR_LOG_PATH", log_path, raising=False)
+
     def boom(url):
         raise RuntimeError("boom")
 
@@ -112,9 +123,13 @@ def test_rip_non_hx_error_returns_stack(monkeypatch):
     with pytest.raises(api.HTTPException) as excinfo:
         client.post("/rip", data={"youtube_url": "http://x"})
     assert "RuntimeError: boom" in excinfo.value.detail
+    assert "RuntimeError: boom" in log_path.read_text()
 
 
-def test_rip_hx_error_returns_stack(monkeypatch):
+def test_rip_hx_error_returns_stack(monkeypatch, tmp_path):
+    log_path = tmp_path / "errors.log"
+    monkeypatch.setattr(api, "ERROR_LOG_PATH", log_path, raising=False)
+
     def boom(url):
         raise RuntimeError("boom")
 
@@ -127,6 +142,35 @@ def test_rip_hx_error_returns_stack(monkeypatch):
     )
     assert resp.status_code == 500
     assert "RuntimeError: boom" in resp.text
+    assert "RuntimeError: boom" in log_path.read_text()
+
+
+def test_error_log_endpoint_serves_file(monkeypatch, tmp_path):
+    log_path = tmp_path / "errors.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text("log contents")
+    monkeypatch.setattr(api, "ERROR_LOG_PATH", log_path, raising=False)
+    resp = client.get("/logs/error")
+    assert resp.status_code == 200
+    assert resp.text == "log contents"
+
+
+def test_error_log_endpoint_returns_404_when_missing(monkeypatch, tmp_path):
+    log_path = tmp_path / "errors.log"
+    if log_path.exists():
+        log_path.unlink()
+    monkeypatch.setattr(api, "ERROR_LOG_PATH", log_path, raising=False)
+    with pytest.raises(api.HTTPException) as excinfo:
+        client.get("/logs/error")
+    assert excinfo.value.status_code == 404
+
+
+def test_index_template_has_error_log_link():
+    template_path = os.path.join(os.path.dirname(__file__), "..", "src", "songripper", "templates", "index.html")
+    with open(template_path) as fh:
+        html = fh.read()
+    assert "View error log" in html
+    assert "No errors logged yet." in html
 
 
 def test_rip_form_has_afterrequest_handler():

@@ -14,6 +14,11 @@
   <p id="message">{{ message }}</p>
 {% endif %}
 </div>
+{% if error_log_url %}
+  <p><a href="{{ error_log_url }}" target="_blank" rel="noopener">View error log</a></p>
+{% else %}
+  <p>No errors logged yet.</p>
+{% endif %}
 <h2>Rip YouTube</h2>
 <div id="spinner" aria-hidden="true"></div>
 <form hx-post="/rip" hx-swap="none" hx-indicator="#spinner"
