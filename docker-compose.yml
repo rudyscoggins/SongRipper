@@ -3,8 +3,6 @@ version: "3.9"
 services:
   songripper:
     image: ghcr.io/rudyscoggins/songripper:latest
-    labels:
-      - com.centurylinklabs.watchtower.scope=songripper
     restart: unless-stopped
     environment:
       DATA_DIR: /data
@@ -14,16 +12,3 @@ services:
       - /home/pi/NAS/music/Elysium:/music
     ports:
       - "5423:8000"
-
-
-  watchtower:
-    image: containrrr/watchtower:latest
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    env_file:
-      - .env
-    command: >
-      --interval 180
-      --scope songripper
-      -n shoutrrr
-      --notification-url=telegram://${WATCHTOWER_TELEGRAM_TOKEN}@telegram?channels=${WATCHTOWER_TELEGRAM_CHAT_ID}
