@@ -1,6 +1,7 @@
 # src/songripper/api.py
 from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException
 from pathlib import Path
+from datetime import datetime
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -14,10 +15,22 @@ from .worker import (
     list_staged_tracks,
     TrackUpdateError,
 )
-from .settings import CACHE_BUSTER
+from .settings import CACHE_BUSTER, DATA_DIR
 from . import PACKAGE_TIME
 from . import worker
 app = FastAPI()
+
+ERROR_LOG_PATH = DATA_DIR / "logs" / "errors.log"
+
+
+def log_error(message: str) -> None:
+    """Append an error message to the shared log file."""
+
+    ERROR_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().isoformat(timespec="seconds")
+    entry = f"[{timestamp}]\n{message.rstrip()}\n\n"
+    with ERROR_LOG_PATH.open("a", encoding="utf-8") as fh:
+        fh.write(entry)
 
 @app.middleware("http")
 async def add_no_cache_headers(request: Request, call_next):
@@ -31,15 +44,25 @@ app.mount("/static", StaticFiles(directory="src/songripper/static"), name="stati
 templates = Jinja2Templates(directory="src/songripper/templates")
 
 @app.get("/", response_class=HTMLResponse)
-def home(req: Request, msg: str | None = None):
+def home(request: Request, msg: str | None = None):
     context = {
-        "request": req,
+        "request": request,
         "message": msg,
         "v": CACHE_BUSTER,
         "updated": PACKAGE_TIME,
         "has_staged_files": staging_has_files(),
+        "error_log_url": "/logs/error" if ERROR_LOG_PATH.exists() else None,
     }
     return templates.TemplateResponse("index.html", context)
+
+
+@app.get("/logs/error")
+def get_error_log():
+    if not ERROR_LOG_PATH.exists():
+        raise HTTPException(status_code=404, detail="No error log available")
+    content = ERROR_LOG_PATH.read_text(encoding="utf-8")
+    headers = {"Content-Type": "text/plain; charset=utf-8"}
+    return HTMLResponse(content, headers=headers)
 
 @app.post("/rip")
 def rip(request: Request, youtube_url: str = Form(...)):
@@ -47,6 +70,7 @@ def rip(request: Request, youtube_url: str = Form(...)):
         rip_playlist(youtube_url)
     except Exception:
         stack = traceback.format_exc()
+        log_error(f"/rip failed for {youtube_url}\n{stack}")
         if request.headers.get("Hx-Request"):
             context = {"request": request, "message": stack}
             return templates.TemplateResponse("message.html", context, status_code=500)
@@ -60,6 +84,7 @@ def approve(request: Request):
     try:
         approve_all()
     except Exception as exc:
+        log_error(f"/approve failed\n{exc}")
         if request.headers.get("Hx-Request"):
             context = {"request": request, "message": str(exc)}
             return templates.TemplateResponse("message.html", context, status_code=500)
@@ -74,6 +99,7 @@ def approve_selected(request: Request, track: list[str] = Form([])):
     try:
         worker_approve_selected(track)
     except Exception as exc:
+        log_error(f"/approve-selected failed\nTracks: {track}\n{exc}")
         if request.headers.get("Hx-Request"):
             context = {"request": request, "message": str(exc)}
             return templates.TemplateResponse("message.html", context, status_code=500)
