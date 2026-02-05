@@ -123,6 +123,11 @@ def update_album_art(filepath: str, data: bytes, mime: str = "image/jpeg") -> No
     _service.update_album_art(filepath, data, mime)
 
 
+def update_ytdlp() -> str:
+    _sync_service()
+    return _service.update_ytdlp()
+
+
 def find_matching_tracks(filepath: str) -> list[str]:
     """Return library tracks with names similar to ``filepath``."""
     _sync_service()

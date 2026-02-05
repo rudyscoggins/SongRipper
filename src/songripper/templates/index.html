@@ -41,6 +41,7 @@
   <h3>Updates</h3>
   <p>Codex automatically updates this code. Once the changes merge into <code>main</code> on GitHub,
      Watchtower pulls the new image and redeploys it automatically.</p>
+  <button hx-post="/update-ytdlp" hx-target="#alerts" hx-indicator="#spinner">Update yt-dlp</button>
   <footer>Last package update: {{ updated }}</footer>
 </body>
 </html>

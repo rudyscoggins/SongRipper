@@ -78,10 +78,13 @@ def test_rip_playlist_moves_files(monkeypatch, tmp_path):
 
     playlist_json = json.dumps({"entries": [{"id": "1"}, {"id": "2"}]})
 
-    def fake_check_output(args, text=None):
-        return playlist_json
+    class FakeResult:
+        def __init__(self, stdout):
+            self.stdout = stdout
+            self.returncode = 0
+            self.stderr = ""
 
-    monkeypatch.setattr(worker.subprocess, "check_output", fake_check_output)
+    monkeypatch.setattr(worker.subprocess, "run", lambda *a, **k: FakeResult(playlist_json))
 
     songs = iter([
         ("artist1", "album1", tmp_path / f"song1{worker.AUDIO_EXT}"),
@@ -117,8 +120,14 @@ def test_rip_playlist_accepts_video_url(monkeypatch, tmp_path):
 
     video_json = json.dumps({"id": "x"})
 
+    class FakeResult:
+        def __init__(self, stdout):
+            self.stdout = stdout
+            self.returncode = 0
+            self.stderr = ""
+
     monkeypatch.setattr(
-        worker.subprocess, "check_output", lambda *a, **k: video_json
+        worker.subprocess, "run", lambda *a, **k: FakeResult(video_json)
     )
 
     monkeypatch.setattr(
@@ -179,11 +188,13 @@ def test_mp3_from_url_embeds_thumbnail_when_no_itunes(monkeypatch, tmp_path):
         "thumbnail": "http://thumb/img.jpg",
     }
 
-    def fake_check_output(cmd, text=True):
-        return json.dumps(meta)
+    class FakeResult:
+        def __init__(self, stdout):
+            self.stdout = stdout
+            self.returncode = 0
+            self.stderr = ""
 
-    monkeypatch.setattr(worker.subprocess, "check_output", fake_check_output)
-    monkeypatch.setattr(worker.subprocess, "run", lambda *a, **kw: None)
+    monkeypatch.setattr(worker.subprocess, "run", lambda cmd, **k: FakeResult(json.dumps(meta)) if "-J" in cmd else FakeResult(""))
     monkeypatch.setattr(worker, "fetch_cover", lambda a, t: None)
 
     thumb_calls = []
@@ -468,7 +479,14 @@ def test_rip_playlist_runs_in_parallel(monkeypatch, tmp_path):
     worker.DATA_DIR = tmp_path
 
     playlist_json = json.dumps({"entries": [{"id": "1"}, {"id": "2"}]})
-    monkeypatch.setattr(worker.subprocess, "check_output", lambda *a, **k: playlist_json)
+
+    class FakeResult:
+        def __init__(self, stdout):
+            self.stdout = stdout
+            self.returncode = 0
+            self.stderr = ""
+
+    monkeypatch.setattr(worker.subprocess, "run", lambda *a, **k: FakeResult(playlist_json))
 
     thread_ids = []
 

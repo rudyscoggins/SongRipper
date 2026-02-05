@@ -20,6 +20,10 @@ class TrackUpdateError(Exception):
     """Raised when an update operation cannot be completed."""
 
 
+class RipperError(Exception):
+    """Raised when an external command (like yt-dlp) fails."""
+
+
 class RipperService:
     """Service encapsulating all ripping and file management operations."""
 
@@ -33,6 +37,33 @@ class RipperService:
         self.tag_lock = threading.Lock()
         self.album_lock = threading.Lock()
         self.album_art_cache: dict[tuple[str, str], bytes | None] = {}
+
+    def _run_command(self, cmd: list[str], **kwargs) -> str:
+        """Run a command and return stdout, or raise RipperError with stderr."""
+        try:
+            # We want to capture both stdout and stderr to provide better error messages.
+            # But we also want to support passing other kwargs like 'text', 'check', etc.
+            kwargs.setdefault("text", True)
+            kwargs.setdefault("capture_output", True)
+            result = subprocess.run(cmd, **kwargs)
+            if result.returncode != 0:
+                error_msg = result.stderr or result.stdout or "No error output"
+                raise RipperError(
+                    f"Command '{' '.join(cmd)}' failed with exit code {result.returncode}:\n{error_msg}"
+                )
+            return result.stdout
+        except Exception as exc:
+            if isinstance(exc, RipperError):
+                raise
+            raise RipperError(f"Failed to execute command '{' '.join(cmd)}': {exc}")
+
+    def update_ytdlp(self) -> str:
+        """Update yt-dlp to the latest version."""
+        # We use 'pip install -U yt-dlp' to update it.
+        # Since we might be in a container or venv, we use sys.executable to find the right pip.
+        import sys
+        cmd = [sys.executable, "-m", "pip", "install", "-U", "yt-dlp"]
+        return self._run_command(cmd)
 
     # ------------------------------------------------------------------
     # Utility helpers
@@ -119,7 +150,7 @@ class RipperService:
         fetch_thumbnail = fetch_thumbnail or self.fetch_thumbnail
 
         meta = json.loads(
-            subprocess_mod.check_output(self.YT_BASE + ["-J", "--no-playlist", url], text=True)
+            self._run_command(self.YT_BASE + ["-J", "--no-playlist", url])
         )
         artist = self.clean(meta.get("artist") or meta["uploader"])
         title = self.clean(meta.get("track") or meta["title"])
@@ -141,10 +172,9 @@ class RipperService:
                 prefix = ""
 
         outtmpl = str(staging_dir / f"{prefix}{title}.%(ext)s")
-        subprocess_mod.run(
+        self._run_command(
             self.YT_BASE
-            + ["-x", "--audio-format", self.AUDIO_FORMAT, "-o", outtmpl, url],
-            check=True,
+            + ["-x", "--audio-format", self.AUDIO_FORMAT, "-o", outtmpl, url]
         )
         mp3_path = staging_dir / f"{prefix}{title}{self.AUDIO_EXT}"
 
@@ -228,9 +258,7 @@ class RipperService:
             self.album_art_cache.clear()
 
         info = json.loads(
-            subprocess_mod.check_output(
-                self.YT_BASE + ["--flat-playlist", "-J", pl_url], text=True
-            )
+            self._run_command(self.YT_BASE + ["--flat-playlist", "-J", pl_url])
         )
         items = info.get("entries")
 

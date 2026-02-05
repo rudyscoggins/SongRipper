@@ -207,6 +207,25 @@ def edit_multiple(
     return RedirectResponse("/", status_code=303)
 
 
+@app.post("/update-ytdlp")
+def update_ytdlp_endpoint(request: Request):
+    try:
+        output = worker.update_ytdlp()
+        msg = f"yt-dlp updated successfully:\n{output}"
+    except Exception as exc:
+        msg = f"Failed to update yt-dlp:\n{exc}"
+        log_error(msg)
+        if request.headers.get("Hx-Request"):
+            context = {"request": request, "message": msg}
+            return templates.TemplateResponse("message.html", context, status_code=500)
+        raise HTTPException(status_code=500, detail=msg)
+    
+    if request.headers.get("Hx-Request"):
+        context = {"request": request, "message": msg}
+        return templates.TemplateResponse("message.html", context)
+    return RedirectResponse(f"/?msg={msg.replace(' ', '+')}", status_code=303)
+
+
 @app.get("/check")
 def check_duplicates(request: Request, filepath: str):
     matches = worker.find_matching_tracks(filepath)
