@@ -20,18 +20,13 @@ or delete the staging area.
 
 ### Updating an existing deployment
 
-When new changes are available, pull the latest code and rebuild the containers:
+To apply local code changes and rebuild the service:
 
 ```bash
-git fetch origin
-git checkout main
-git pull origin main
-docker compose down
 docker compose up --build -d
 ```
 
-This sequence ensures you are running the newest code on the `main` branch and restarts the
-service with a freshly built image.
+This ensures you are running the latest code and restarts the service in the background.
 
 ## Environment Variables
 

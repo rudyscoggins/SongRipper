@@ -39,8 +39,9 @@
         choose <strong>Unapprove and Delete Staging</strong> to discard them.</li>
   </ol>
   <h3>Updates</h3>
-  <p>Codex automatically updates this code. Once the changes merge into <code>main</code> on GitHub,
-     Watchtower pulls the new image and redeploys it automatically.</p>
+  <p>To redeploy with the latest local changes, run:</p>
+  <code>docker compose up --build -d</code>
+  <p></p>
   <button hx-post="/update-ytdlp" hx-target="#alerts" hx-indicator="#spinner">Update yt-dlp</button>
   <footer>Last package update: {{ updated }}</footer>
 </body>
