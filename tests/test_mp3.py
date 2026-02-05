@@ -172,3 +172,50 @@ def test_mp3_from_url_fallback_values(tmp_path, monkeypatch):
     assert artist == "Unknown Artist"
     assert album == "Unknown Album"
     assert path == tmp_path / f"Unknown Title{AUDIO_EXT}"
+
+
+def test_mp3_from_url_singles_rule(tmp_path, monkeypatch):
+    meta = {
+        "artist": "Artist",
+        "track": "Song Title",
+        "album": "Singles",
+        "uploader": "Uploader",
+        "title": "T",
+        "playlist": "List",
+    }
+
+    class FakeResult:
+        def __init__(self, stdout):
+            self.stdout = stdout
+            self.returncode = 0
+            self.stderr = ""
+
+    monkeypatch.setattr(subprocess, "run", lambda cmd, **k: FakeResult(json.dumps(meta)) if "-J" in cmd else FakeResult(""))
+    monkeypatch.setattr(worker, "fetch_cover", lambda *a, **k: None)
+
+    class DummyEasyID3(dict):
+        def __init__(self, path):
+            self.path = path
+        def save(self):
+            pass
+
+    class DummyID3(dict):
+        def __init__(self, path):
+            self.path = path
+        def save(self):
+            pass
+
+    class DummyAPIC(bytes):
+        FORMAT_JPEG = 0
+        FORMAT_PNG = 1
+        def __new__(cls, data, imageformat=None):
+            obj = bytes.__new__(cls, data)
+            obj.kw = {"data": data, "imageformat": imageformat}
+            return obj
+
+    monkeypatch.setitem(sys.modules, "mutagen.easymp4", types.SimpleNamespace(EasyMP4=DummyEasyID3))
+    monkeypatch.setitem(sys.modules, "mutagen.mp4", types.SimpleNamespace(MP4=DummyID3, MP4Cover=DummyAPIC))
+
+    artist, album, path = mp3_from_url("http://x", tmp_path)
+
+    assert album == "Song Title"

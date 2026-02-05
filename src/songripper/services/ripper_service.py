@@ -156,6 +156,9 @@ class RipperService:
         title = self.clean(meta.get("track") or meta["title"])
         album = self.clean(meta.get("album") or meta.get("playlist") or "Singles")
 
+        if album == "Singles":
+            album = title
+
         if not artist:
             artist = "Unknown Artist"
         if not album:
