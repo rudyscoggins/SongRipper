@@ -1,8 +1,7 @@
-version: "3.9"
-
 services:
   songripper:
-    build: .
+    build:
+      context: .
     image: ghcr.io/rudyscoggins/songripper:latest
     restart: unless-stopped
     environment:

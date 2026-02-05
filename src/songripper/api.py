@@ -16,6 +16,7 @@ from .worker import (
     TrackUpdateError,
 )
 from .settings import CACHE_BUSTER, DATA_DIR
+from . import PACKAGE_TIME
 from . import worker
 app = FastAPI()
 
@@ -48,6 +49,7 @@ def home(request: Request, msg: str | None = None):
         "request": request,
         "message": msg,
         "v": CACHE_BUSTER,
+        "updated": PACKAGE_TIME,
         "has_staged_files": staging_has_files(),
         "error_log_url": "/logs/error" if ERROR_LOG_PATH.exists() else None,
     }
