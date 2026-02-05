@@ -1,0 +1,40 @@
+[2026-02-05T03:11:13]
+/rip failed for https://www.youtube.com/playlist?list=PL8ouQlHvqbcl_VVgFA0dXZzQQT2-_4cYJ
+Traceback (most recent call last):
+  File "/app/src/songripper/api.py", line 70, in rip
+    rip_playlist(youtube_url)
+  File "/app/src/songripper/worker.py", line 70, in rip_playlist
+    return _service.rip_playlist(
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/songripper/services/ripper_service.py", line 281, in rip_playlist
+    list(ex.map(lambda it: rip_item(to_url(it)), items))
+  File "/usr/local/lib/python3.12/concurrent/futures/_base.py", line 619, in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/concurrent/futures/_base.py", line 317, in _result_or_cancel
+    return fut.result(timeout)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/usr/local/lib/python3.12/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/songripper/services/ripper_service.py", line 281, in <lambda>
+    list(ex.map(lambda it: rip_item(to_url(it)), items))
+                           ^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/songripper/services/ripper_service.py", line 270, in rip_item
+    artist, album, path = mp3_func(url, staging)
+                          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/songripper/worker.py", line 58, in mp3_from_url
+    return _service.mp3_from_url(
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/songripper/services/ripper_service.py", line 153, in mp3_from_url
+    self._run_command(self.YT_BASE + ["-J", "--no-playlist", url])
+  File "/app/src/songripper/services/ripper_service.py", line 51, in _run_command
+    raise RipperError(
+songripper.services.ripper_service.RipperError: Command 'yt-dlp --quiet --no-warnings -J --no-playlist https://youtu.be/EMncX8I9Vho' failed with exit code 1:
+ERROR: [youtube] EMncX8I9Vho: Video unavailable. This video is no longer available because the YouTube account associated with this video has been terminated.
+
